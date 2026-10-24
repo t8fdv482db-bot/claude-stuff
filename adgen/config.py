@@ -12,14 +12,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MOCK_PROVIDERS = {
-    "script": "mock",
-    "portrait": "mock",
-    "voice": "mock",
-    "lipsync": "mock",
-    "music": "mock",
-}
-
 
 class ConfigError(RuntimeError):
     pass

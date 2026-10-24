@@ -59,7 +59,9 @@ class FakeClient:
         )
 
 
-def test_mock_writer_passes_lint(brief):
+@pytest.mark.parametrize("length", [15, 20, 30])
+def test_mock_writer_passes_lint(brief, length):
+    brief = brief.model_copy(update={"length": length})
     ss = MockScriptWriter().write(brief)
     assert [v.variant for v in ss.variants] == ["A", "B", "C"]
     for v in ss.variants:

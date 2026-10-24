@@ -40,6 +40,9 @@ class MockScriptWriter(ScriptWriter):
             solution_sentences = [f"Meet {brief.name}."]
             used = []
             fixed = len(hook.split()) + len(problem.split()) + len(cta.split())
+            if fixed + 3 + len(points[0].split()) > budget:  # short ads: trim the framing lines
+                cta, solution_sentences = _sentence(brief.cta), []
+                fixed = len(hook.split()) + len(problem.split()) + len(cta.split())
             for p in points:
                 candidate = solution_sentences + [_sentence(p)]
                 if fixed + sum(len(x.split()) for x in candidate) > budget:

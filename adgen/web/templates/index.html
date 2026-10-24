@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AdGen Studio</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>AdGen Studio</h1>
+  <p class="sub">Product brief in, finished AI-presenter video ads out.</p>
+  <label class="toggle" title="Use free local mock providers (no API keys, no network)">
+    <input type="checkbox" id="offline" {% if not all_keys %}checked{% endif %}> Offline mock mode
+  </label>
+</header>
+{% if not all_keys %}
+<div class="banner">
+  Missing keys:
+  {% for k, ok in keys.items() if not ok %}<code>{{ k }}</code> {% endfor %}
+  &mdash; add them to <code>.env</code> for real renders. Offline mode is on.
+</div>
+{% endif %}
+
+<main>
+<section id="step-brief" class="card">
+  <h2><span class="num">1</span> Product brief</h2>
+  <form id="brief-form">
+    <div class="grid">
+      <label>Product name<input name="name" required></label>
+      <label>Product URL<input name="product_url" placeholder="example.com/product"></label>
+      <label class="wide">Description<textarea name="description" rows="2" required></textarea></label>
+      <label class="wide">Target audience<input name="target_audience" required></label>
+      <label class="wide">Key selling points <small>(one per line &mdash; the only claims the script may make)</small>
+        <textarea name="selling_points" rows="4" required></textarea></label>
+      <label class="wide">Extra approved claims <small>(optional: offers, prices, stats you can substantiate)</small>
+        <textarea name="approved_claims" rows="2"></textarea></label>
+      <label>Call to action<input name="cta" value="Shop now"></label>
+      <label>Tone
+        <select name="tone">
+          <option>casual UGC</option><option>polished</option><option>funny</option>
+          <option>calm and premium</option><option>high-energy</option>
+        </select>
+      </label>
+      <label>Language<input name="language" value="en" size="4"></label>
+      <fieldset><legend>Length</legend>
+        <label><input type="radio" name="length" value="15"> 15s</label>
+        <label><input type="radio" name="length" value="20"> 20s</label>
+        <label><input type="radio" name="length" value="30" checked> 30s</label>
+      </fieldset>
+      <fieldset><legend>Aspect ratios</legend>
+        <label><input type="checkbox" name="ratio" value="9:16" checked> 9:16</label>
+        <label><input type="checkbox" name="ratio" value="1:1"> 1:1</label>
+        <label><input type="checkbox" name="ratio" value="16:9"> 16:9</label>
+      </fieldset>
+      <label>Product images<input type="file" name="images" accept="image/*" multiple></label>
+      <label>Logo<input type="file" name="logo" accept="image/*"></label>
+    </div>
+    <div class="actions">
+      <button type="button" id="load-sample" class="ghost">Fill with sample product</button>
+      <button type="submit">Write 3 scripts</button>
+      <span id="script-estimate" class="muted"></span>
+    </div>
+  </form>
+</section>
+
+<section id="step-scripts" class="card hidden">
+  <h2><span class="num">2</span> Pick scripts to render</h2>
+  <div id="scripts"></div>
+</section>
+
+<section id="step-avatar" class="card hidden">
+  <h2><span class="num">3</span> Presenter</h2>
+  <p class="muted">Every presenter is fully synthetic. Pick a saved brand face or create a new one.</p>
+  <div id="avatars" class="avatars"></div>
+  <details>
+    <summary>Create a new presenter</summary>
+    <form id="avatar-form" class="grid">
+      <label>Name<input name="name" required placeholder="e.g. Maya"></label>
+      <label>Age<input name="age" value="late 20s"></label>
+      <label>Gender<input name="gender" value="woman"></label>
+      <label>Ethnicity<input name="ethnicity" value="unspecified"></label>
+      <label class="wide">Setting<input name="setting" value="bright modern apartment living room"></label>
+      <label>Outfit<input name="outfit" value="casual knit sweater"></label>
+      <label>Accent<input name="accent" value="American"></label>
+      <label class="wide">Look details<input name="extra" placeholder="hair, expression... (no real people)"></label>
+      <label class="wide">Voice description <small>(optional)</small><input name="voice_description"></label>
+      <div class="actions wide"><button type="submit">Generate presenter</button><span id="avatar-status" class="muted"></span></div>
+    </form>
+  </details>
+</section>
+
+<section id="step-render" class="card hidden">
+  <h2><span class="num">4</span> Render</h2>
+  <div class="grid">
+    <label>Lip-sync model
+      <select id="lipsync">
+        <option value="kling_avatar_v2_pro">Kling Avatar v2 Pro (default)</option>
+        <option value="omnihuman_v15">OmniHuman 1.5 (premium)</option>
+        <option value="kling_avatar_v2_standard">Kling Avatar v2 Standard (budget)</option>
+      </select>
+    </label>
+    <fieldset><legend>Options</legend>
+      <label><input type="checkbox" id="captions" checked> Word-by-word captions</label>
+      <label><input type="checkbox" id="ai_label" checked> "AI-generated" label</label>
+      <label><input type="checkbox" id="music" checked> Background music</label>
+    </fieldset>
+    <label class="wide">Music prompt <small>(optional)</small><input id="music_prompt" placeholder="defaults to a bed matched to the tone"></label>
+  </div>
+  <div id="render-estimate"></div>
+  <div class="actions"><button id="render-btn">Render ads</button></div>
+  <pre id="render-log" class="log hidden"></pre>
+</section>
+
+<section id="step-results" class="card hidden">
+  <h2><span class="num">5</span> Finished ads</h2>
+  <div id="results"></div>
+</section>
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>
