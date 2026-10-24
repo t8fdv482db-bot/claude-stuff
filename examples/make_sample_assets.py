@@ -67,7 +67,7 @@ def ice(d, size):
 
 
 def logo():
-    img = Image.new("RGBA", (800, 300), (0, 0, 0, 0))
+    img = Image.new("RGBA", (1000, 300), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     d.ellipse([20, 50, 220, 250], fill=(230, 160, 80, 255))
     d.ellipse([75, 105, 165, 195], fill=(32, 44, 52, 255))
