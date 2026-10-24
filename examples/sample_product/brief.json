@@ -1,0 +1,25 @@
+{
+  "name": "Pocket Brew",
+  "description": "A 1-liter bottle that cold-brews coffee right inside it. Add grounds to the removable steel filter, fill with water, and it's ready after brewing overnight in the fridge. Fictional sample product used for testing.",
+  "target_audience": "busy commuters and students who love iced coffee but hate paying cafe prices",
+  "selling_points": [
+    "Brews smooth cold brew overnight in the fridge",
+    "Leak-proof lid you can toss in a bag",
+    "Removable stainless steel filter rinses clean in seconds",
+    "Fits standard car cup holders",
+    "Holds 1 liter, enough for several cups"
+  ],
+  "approved_claims": [],
+  "image_paths": [
+    "examples/sample_product/product_hero.jpg",
+    "examples/sample_product/product_ice.jpg",
+    "examples/sample_product/product_desk.jpg"
+  ],
+  "product_url": "pocketbrew.example",
+  "logo_path": "examples/sample_product/logo.png",
+  "cta": "Get yours at pocketbrew.example",
+  "tone": "casual UGC",
+  "length": 20,
+  "aspect_ratios": ["9:16", "1:1", "16:9"],
+  "language": "en"
+}

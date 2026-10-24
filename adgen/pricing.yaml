@@ -1,0 +1,25 @@
+# Unit prices used for pre-render estimates and the post-render cost log.
+# Sources: provider pricing pages / third-party roundups, Oct 2026. Verify against
+# your own invoices and edit freely; override the path with ADGEN_PRICING_FILE.
+
+anthropic:            # USD per million tokens (thinking tokens bill as output)
+  claude-opus-5-5:   {input: 4.00, output: 20.00}
+  claude-sonnet-5-5: {input: 2.00, output: 10.00}
+  claude-haiku-5-5:  {input: 0.10, output: 0.50}
+
+elevenlabs:
+  tts_per_1k_chars:   # USD per 1,000 characters
+    eleven_v3: 0.08
+    eleven_multilingual_v2: 0.08
+    eleven_flash_v2_5: 0.04
+  voice_design_per_call: 0.03   # preview generation (billed as ~TTS characters)
+  music_per_minute: 0.15
+
+fal:
+  flux2pro_per_image: 0.05
+  lipsync_per_second:
+    kling_avatar_v2_pro: 0.115
+    kling_avatar_v2_standard: 0.0562
+    omnihuman_v15: 0.16
+
+mock: 0.0
