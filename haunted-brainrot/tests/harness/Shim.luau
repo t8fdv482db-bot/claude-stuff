@@ -72,6 +72,8 @@ function Shim.install()
 	end)
 
 	-- Parts / models
+	-- NOTE: Lune keeps Part.Position separate from Part.CFrame and won't let it be overridden,
+	-- so game code reads positions as part.CFrame.Position (equivalent in Roblox).
 	signalProp("BasePart", "Touched")
 	signalProp("BasePart", "TouchEnded")
 	roblox.implementMethod("Model", "GetPivot", function(self)

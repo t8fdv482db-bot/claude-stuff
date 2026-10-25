@@ -17,3 +17,8 @@ ServerScriptService/Lib/DataTemplate ModuleScript
 ServerScriptService/Lib/DataMigrations ModuleScript
 StarterPlayer/StarterPlayerScripts/Main LocalScript
 StarterPlayer/StarterPlayerScripts/Controllers/UIController ModuleScript
+ServerScriptService/Services/PlotService ModuleScript
+ServerScriptService/Lib/PlotLayout ModuleScript
+ServerScriptService/Lib/MansionBuilder ModuleScript
+ServerScriptService/Lib/WorldBuilder ModuleScript
+StarterPlayer/StarterPlayerScripts/Controllers/PlotController ModuleScript

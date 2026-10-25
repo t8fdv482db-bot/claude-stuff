@@ -7,7 +7,7 @@
 local Controllers = script.Parent:WaitForChild("Controllers")
 
 -- Load order for controllers that depend on each other; any others load afterwards alphabetically.
-local ORDER = { "UIController" }
+local ORDER = { "UIController", "PlotController" }
 
 local modules: { { name: string, controller: any } } = {}
 local seen: { [string]: boolean } = {}

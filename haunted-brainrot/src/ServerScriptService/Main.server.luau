@@ -16,6 +16,7 @@ local Services = script.Parent.Services
 local ORDER = {
 	"DataService",
 	"EconomyService",
+	"PlotService",
 }
 
 local problems = ConfigValidator.Validate()
