@@ -1,0 +1,148 @@
+{%- assign product_form_id = 'product-form-' | append: section.id -%}
+{%- assign current_variant = product.selected_or_first_available_variant -%}
+{%- assign single_price = product.variants.first.price -%}
+{%- assign highlight = section.settings.highlight_index | plus: 0 -%}
+
+<section class="product">
+  <div class="container product__grid">
+
+    {%- comment -%} Media {%- endcomment -%}
+    <div class="product__media-col" data-gallery>
+      <div class="product__media">
+        {%- if product.media.size > 0 -%}
+          {%- assign fm = product.featured_media -%}
+          <img data-gallery-main src="{{ fm | image_url: width: 1200 }}" alt="{{ fm.alt | default: product.title | escape }}" width="1200" height="1200" loading="eager">
+        {%- else -%}
+          <img data-gallery-main src="{{ 'keenroll-placeholder.svg' | asset_url }}" alt="Keenroll rolling knife sharpener kit illustration" width="800" height="800">
+        {%- endif -%}
+      </div>
+      {%- if product.media.size > 1 -%}
+        <div class="thumbs">
+          {%- for media in product.media -%}
+            {%- if media.media_type == 'image' -%}
+              <button type="button" data-gallery-thumb data-src="{{ media | image_url: width: 1200 }}" data-alt="{{ media.alt | escape }}" aria-current="{% if forloop.first %}true{% else %}false{% endif %}" aria-label="Show image {{ forloop.index }}">
+                <img src="{{ media | image_url: width: 160 }}" alt="" width="72" height="72" loading="lazy">
+              </button>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      {%- endif -%}
+      {%- if product.media.size == 0 -%}
+        <p class="photo-note">Illustration shown. Real product photos coming soon.</p>
+      {%- endif -%}
+    </div>
+
+    {%- comment -%} Buy box {%- endcomment -%}
+    <div>
+      {%- for block in section.blocks -%}
+        {%- if block.type == '@app' -%}<div class="rating-slot">{% render block %}</div>{%- endif -%}
+      {%- endfor -%}
+
+      <h1 class="product__title">{{ product.title }}</h1>
+      <p class="product__hook">{{ section.settings.hook }}</p>
+
+      <div class="price" data-main-price>{{ current_variant.price | money }}</div>
+
+      <ul class="bullets">
+        {%- for block in section.blocks -%}
+          {%- if block.type == 'bullet' -%}
+            <li {{ block.shopify_attributes }}>{% render 'icon', name: 'check' %}<span>{{ block.settings.text }}</span></li>
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+
+      {%- form 'product', product, id: product_form_id, novalidate: 'novalidate' -%}
+        <fieldset class="bundles" data-bundles>
+          <legend>{{ section.settings.bundle_heading }}</legend>
+          {%- for variant in product.variants -%}
+            {%- assign qty = variant.option1 | split: ' ' | first | plus: 0 -%}
+            {%- if qty < 1 -%}{%- assign qty = 1 -%}{%- endif -%}
+            {%- assign full = single_price | times: qty -%}
+            {%- assign save = full | minus: variant.price -%}
+            {%- assign per = variant.price | divided_by: qty -%}
+            {%- capture price_html -%}{{ variant.price | money }}{% if save > 0 %}<small>You save {{ save | money_without_trailing_zeros }}</small>{% endif %}{%- endcapture -%}
+            {%- case forloop.index -%}
+              {%- when 1 -%}{%- assign sub = section.settings.sub_1 -%}
+              {%- when 2 -%}{%- assign sub = section.settings.sub_2 -%}
+              {%- else -%}{%- assign sub = section.settings.sub_3 -%}
+            {%- endcase -%}
+            <label class="bundle">
+              {%- if forloop.index == highlight -%}<span class="bundle__tag">{{ section.settings.highlight_label }}</span>{%- endif -%}
+              <input type="radio" name="id" value="{{ variant.id }}"
+                {% if variant.id == current_variant.id %}checked{% endif %}
+                {% unless variant.available %}disabled{% endunless %}
+                data-label="{{ product.title | escape }} · {{ variant.title | escape }}"
+                data-price="{{ variant.price | money | strip_html | escape }}"
+                data-price-html="{{ price_html | escape }}">
+              <span>
+                <span class="bundle__name">{{ variant.title }}{% unless variant.available %} · Sold out{% endunless %}</span>
+                <span class="bundle__sub">{{ sub }}{% if qty > 1 %} · {{ per | money }} each{% endif %}</span>
+              </span>
+              <span class="bundle__price">
+                {{ variant.price | money }}
+                {%- if save > 0 -%}<span class="bundle__save">Save {{ save | money_without_trailing_zeros }}</span>{%- endif -%}
+              </span>
+            </label>
+          {%- endfor -%}
+        </fieldset>
+        <input type="hidden" name="quantity" value="1">
+
+        <button type="submit" name="add" class="btn btn--primary btn--block" data-main-atc {% unless product.available %}disabled{% endunless %}>
+          {%- if product.available -%}{{ section.settings.atc_label }}{%- else -%}Sold out{%- endif -%}
+        </button>
+      {%- endform -%}
+
+      <div class="ship-box">
+        <div>{% render 'icon', name: 'truck' %}<span><strong>Free US shipping.</strong> Estimated delivery <strong data-delivery-estimate data-min="{{ settings.delivery_min_days }}" data-max="{{ settings.delivery_max_days }}">{{ settings.delivery_min_days }}–{{ settings.delivery_max_days }} business days</strong>.</span></div>
+        <div>{% render 'icon', name: 'shield' %}<span>{{ section.settings.guarantee_line }}</span></div>
+        <div>{% render 'icon', name: 'gift' %}<span>{{ section.settings.gift_line }}</span></div>
+      </div>
+
+      {%- if section.settings.show_cutoff and section.settings.cutoff_text != blank -%}
+        <div class="cutoff">{{ section.settings.cutoff_text }}</div>
+      {%- endif -%}
+
+      {%- if product.description != blank -%}
+        <details class="faq" style="margin-top:12px">
+          <summary>What's in the box &amp; specs</summary>
+          <div class="faq__a rte">{{ product.description }}</div>
+        </details>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+<div class="sticky-atc" data-sticky-atc aria-hidden="false">
+  <div class="sticky-atc__info">
+    <div class="sticky-atc__title" data-sticky-variant>{{ product.title }}</div>
+    <div class="sticky-atc__price" data-sticky-price>{{ current_variant.price | money }}</div>
+  </div>
+  <button type="submit" form="{{ product_form_id }}" class="btn btn--primary" {% unless product.available %}disabled{% endunless %}>{{ section.settings.sticky_label }}</button>
+</div>
+
+{% schema %}
+{
+  "name": "Product page",
+  "settings": [
+    { "type": "textarea", "id": "hook", "label": "Hook line under title", "default": "Stick it to the magnet. Roll 20×. Slice a tomato like it's butter." },
+    { "type": "text", "id": "bundle_heading", "label": "Bundle heading", "default": "Choose your kit" },
+    { "type": "text", "id": "sub_1", "label": "Variant 1 sub-label", "default": "For your kitchen" },
+    { "type": "text", "id": "sub_2", "label": "Variant 2 sub-label", "default": "One to keep, one to gift" },
+    { "type": "text", "id": "sub_3", "label": "Variant 3 sub-label", "default": "Family gifting" },
+    { "type": "range", "id": "highlight_index", "label": "Highlighted variant (position)", "min": 0, "max": 3, "step": 1, "default": 2 },
+    { "type": "text", "id": "highlight_label", "label": "Highlight tag", "default": "Most gifted" , "info": "Only use a claim that's true for your store (e.g. 'Best value'). Change to 'Most popular' only once your data shows it." },
+    { "type": "text", "id": "atc_label", "label": "Add-to-cart label", "default": "Add to cart" },
+    { "type": "text", "id": "sticky_label", "label": "Sticky bar button", "default": "Add to cart" },
+    { "type": "text", "id": "guarantee_line", "label": "Guarantee line", "default": "60-day \"sharp or it's free\" guarantee." },
+    { "type": "text", "id": "gift_line", "label": "Gift line", "default": "Arrives in a gift-ready box. Add a gift note at checkout." },
+    { "type": "checkbox", "id": "show_cutoff", "label": "Show holiday cutoff notice", "default": true },
+    { "type": "text", "id": "cutoff_text", "label": "Holiday cutoff text", "default": "🎁 Holiday shipping: order by Dec 1 for estimated US delivery before Dec 24 (standard shipping).", "info": "Set this from your supplier's REAL transit times. Update or turn off after the date passes." }
+  ],
+  "blocks": [
+    { "type": "@app" },
+    { "type": "bullet", "name": "Benefit bullet", "settings": [
+      { "type": "text", "id": "text", "label": "Text", "default": "Benefit" }
+    ] }
+  ]
+}
+{% endschema %}

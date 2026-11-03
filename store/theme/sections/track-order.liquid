@@ -1,0 +1,36 @@
+<section class="section">
+  <div class="container narrow">
+    <h1>{{ section.settings.heading }}</h1>
+    <div class="rte muted">{{ section.settings.text }}</div>
+
+    <div class="card" style="margin:22px 0">
+      <h3>1. Have your tracking number?</h3>
+      <form data-tracking-form>
+        <div class="field">
+          <label for="TrackingNumber">Tracking number</label>
+          <input id="TrackingNumber" name="tracking" type="text" placeholder="e.g. YT2412345678901234" autocomplete="off" required>
+        </div>
+        <button class="btn btn--dark" type="submit">Track package</button>
+        <p class="form-note" style="margin-top:10px">Opens our tracking partner (17TRACK) in a new tab.</p>
+      </form>
+    </div>
+
+    <div class="card" style="margin:22px 0">
+      <h3>2. Don't have it?</h3>
+      <p>Your shipping confirmation email has a <strong>"View your order"</strong> button that shows live status. Can't find the email? Check spam for "{{ shop.name }}", or <a href="/pages/contact">contact us</a> with your order number and we'll send it over.</p>
+    </div>
+
+    <div class="rte">{{ section.settings.timeline }}</div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Track order",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Track your order" },
+    { "type": "richtext", "id": "text", "label": "Intro", "default": "<p>Tracking numbers are emailed once your order ships, usually within 1–3 business days of purchase.</p>" },
+    { "type": "richtext", "id": "timeline", "label": "Timeline", "default": "<h3>What to expect</h3><ul><li><strong>Processing:</strong> 1–3 business days</li><li><strong>Shipping (US):</strong> 7–12 business days</li><li><strong>Total, typically:</strong> 8–15 business days</li></ul><p>Tracking can show \"no info\" for the first 2–4 days while the label is handed off. That's normal. If nothing has updated after 7 days, message us.</p>" }
+  ]
+}
+{% endschema %}

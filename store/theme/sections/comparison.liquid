@@ -1,0 +1,63 @@
+<section class="section">
+  <div class="container narrow">
+    <div class="center" style="margin-bottom:28px">
+      <span class="eyebrow">{{ section.settings.eyebrow }}</span>
+      <h2>{{ section.settings.heading }}</h2>
+      {%- if section.settings.text != blank -%}<p class="muted">{{ section.settings.text }}</p>{%- endif -%}
+    </div>
+    <p class="swipe-hint" aria-hidden="true">Swipe to compare →</p>
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th scope="col"><span class="visually-hidden">Feature</span></th>
+            <th scope="col" class="is-us">{{ section.settings.col_us }}</th>
+            <th scope="col">{{ section.settings.col_a }}</th>
+            <th scope="col">{{ section.settings.col_b }}</th>
+            <th scope="col">{{ section.settings.col_c }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {%- for block in section.blocks -%}
+            <tr {{ block.shopify_attributes }}>
+              <td>{{ block.settings.feature }}</td>
+              {%- assign vals = block.settings.us | append: '|' | append: block.settings.a | append: '|' | append: block.settings.b | append: '|' | append: block.settings.c | split: '|' -%}
+              {%- for v in vals -%}
+                {%- assign first = v | slice: 0 -%}
+                {%- if first == '✓' -%}{%- assign cls = 'yes' -%}{%- elsif first == '✗' -%}{%- assign cls = 'no' -%}{%- else -%}{%- assign cls = 'meh' -%}{%- endif -%}
+                <td class="{% if forloop.first %}is-us {% endif %}{{ cls }}">{{ v }}</td>
+              {%- endfor -%}
+            </tr>
+          {%- endfor -%}
+        </tbody>
+      </table>
+    </div>
+    {%- if section.settings.footnote != blank -%}<p class="form-note" style="margin-top:12px">{{ section.settings.footnote }}</p>{%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Comparison table",
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Compare" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Why not just use a $10 pull-through?" },
+    { "type": "textarea", "id": "text", "label": "Intro" },
+    { "type": "text", "id": "col_us", "label": "Our column", "default": "Keenroll" },
+    { "type": "text", "id": "col_a", "label": "Column A", "default": "Pull-through" },
+    { "type": "text", "id": "col_b", "label": "Column B", "default": "Whetstone" },
+    { "type": "text", "id": "col_c", "label": "Column C", "default": "Electric" },
+    { "type": "textarea", "id": "footnote", "label": "Footnote", "default": "General comparison of sharpener types, not specific brands. Start cells with ✓ or ✗ for green/red styling." }
+  ],
+  "blocks": [
+    { "type": "row", "name": "Row", "settings": [
+      { "type": "text", "id": "feature", "label": "Feature", "default": "Feature" },
+      { "type": "text", "id": "us", "label": "Keenroll", "default": "✓" },
+      { "type": "text", "id": "a", "label": "Column A", "default": "✗" },
+      { "type": "text", "id": "b", "label": "Column B", "default": "✗" },
+      { "type": "text", "id": "c", "label": "Column C", "default": "✗" }
+    ] }
+  ],
+  "presets": [{ "name": "Comparison table" }]
+}
+{% endschema %}

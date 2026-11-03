@@ -1,0 +1,62 @@
+{
+  "sections": {
+    "story": {
+      "type": "rich-text",
+      "settings": {
+        "eyebrow": "Our story",
+        "heading": "Sharp knives make cooking fun again.",
+        "is_h1": true,
+        "text": "<p>Almost every kitchen has a good knife that has gone dull. It squashes tomatoes, slides off onion skins, and turns dinner into a chore. Most of us mean to get it sharpened \"someday.\"</p><p>Whetstones take practice. Pull-through gadgets can chew up an edge. Mail-in services take weeks. So we went looking for the easiest way to get a properly sharp edge at home, and landed on the rolling sharpener: a magnet holds the angle, and you just roll.</p><p><strong>Keenroll</strong> is a small, independent online shop built around that one tool. We keep it simple: one great product, honest shipping times, real reviews only, and a 60-day guarantee.</p>"
+      }
+    },
+    "values": {
+      "type": "benefits",
+      "settings": {
+        "eyebrow": "What we stand for",
+        "heading": "The Keenroll promise",
+        "columns": "3",
+        "white": true
+      },
+      "blocks": {
+        "b_1": {
+          "type": "benefit",
+          "settings": {
+            "icon": "check",
+            "title": "Honest, always",
+            "text": "No fake countdowns, no fake \"only 2 left,\" no fake reviews. If we say it, it's true."
+          }
+        },
+        "b_2": {
+          "type": "benefit",
+          "settings": {
+            "icon": "shield",
+            "title": "60 days to decide",
+            "text": "Sharp, or it's free. Simple as that."
+          }
+        },
+        "b_3": {
+          "type": "benefit",
+          "settings": {
+            "icon": "truck",
+            "title": "Real delivery times",
+            "text": "We tell you how long shipping actually takes, before you buy."
+          }
+        }
+      },
+      "block_order": [
+        "b_1",
+        "b_2",
+        "b_3"
+      ]
+    },
+    "cta": {
+      "type": "cta-banner",
+      "settings": {}
+    }
+  },
+  "order": [
+    "story",
+    "values",
+    "cta"
+  ]
+}

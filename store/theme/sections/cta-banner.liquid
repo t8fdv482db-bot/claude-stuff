@@ -1,0 +1,20 @@
+<section class="section section--dark">
+  <div class="container narrow center">
+    <h2>{{ section.settings.heading }}</h2>
+    <p class="muted" style="font-size:1.1rem">{{ section.settings.text }}</p>
+    <a class="btn btn--primary" href="{{ section.settings.button_link }}">{{ section.settings.button_label }}</a>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "CTA banner",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Your knives are already good. They're just dull." },
+    { "type": "textarea", "id": "text", "label": "Text", "default": "Give them a minute with a Keenroll. Free US shipping, 60-day guarantee." },
+    { "type": "text", "id": "button_label", "label": "Button label", "default": "Shop Keenroll" },
+    { "type": "text", "id": "button_link", "label": "Button link", "default": "/products/keenroll-rolling-knife-sharpener" }
+  ],
+  "presets": [{ "name": "CTA banner" }]
+}
+{% endschema %}

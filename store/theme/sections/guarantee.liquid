@@ -1,0 +1,29 @@
+<section class="section">
+  <div class="container narrow">
+    <div class="guarantee">
+      <svg class="guarantee__badge" viewBox="0 0 120 120" aria-hidden="true">
+        <circle cx="60" cy="60" r="56" fill="#1C1D1F"/>
+        <circle cx="60" cy="60" r="46" fill="none" stroke="#E8692C" stroke-width="2" stroke-dasharray="4 4"/>
+        <text x="60" y="58" text-anchor="middle" font-family="Fraunces,Georgia,serif" font-size="30" font-weight="700" fill="#F6F1E9">{{ section.settings.days }}</text>
+        <text x="60" y="78" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="9" font-weight="700" letter-spacing="1" fill="#E8692C">DAY GUARANTEE</text>
+      </svg>
+      <div>
+        <h2 style="font-size:1.7rem">{{ section.settings.heading }}</h2>
+        <div class="rte">{{ section.settings.text }}</div>
+        <a href="{{ shop.refund_policy.url | default: '/policies/refund-policy' }}" class="form-note">Read the full refund policy →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Guarantee",
+  "settings": [
+    { "type": "text", "id": "days", "label": "Days", "default": "60" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Sharp, or it's free." },
+    { "type": "richtext", "id": "text", "label": "Text", "default": "<p>Use your Keenroll for up to 60 days after delivery. If it doesn't get your (non-serrated) kitchen knives sharp, email us and we'll refund you in full. For most refunds we won't even ask you to ship it back.</p>" }
+  ],
+  "presets": [{ "name": "Guarantee" }]
+}
+{% endschema %}

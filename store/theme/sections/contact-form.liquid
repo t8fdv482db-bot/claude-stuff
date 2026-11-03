@@ -1,0 +1,44 @@
+<section class="section">
+  <div class="container narrow">
+    <h1>{{ section.settings.heading }}</h1>
+    <div class="rte muted">{{ section.settings.text }}</div>
+
+    {%- form 'contact', id: 'ContactForm' -%}
+      {%- if form.posted_successfully? -%}
+        <div class="alert alert--ok" role="status">Thanks! We got your message and will reply within 1 business day.</div>
+      {%- endif -%}
+      {%- if form.errors -%}
+        <div class="alert alert--err" role="alert">{{ form.errors | default_errors }}</div>
+      {%- endif -%}
+      <div class="field">
+        <label for="ContactName">Name</label>
+        <input id="ContactName" type="text" name="contact[name]" autocomplete="name" value="{{ form.name }}">
+      </div>
+      <div class="field">
+        <label for="ContactEmail">Email <span aria-hidden="true">*</span></label>
+        <input id="ContactEmail" type="email" name="contact[email]" autocomplete="email" required value="{{ form.email }}">
+      </div>
+      <div class="field">
+        <label for="ContactOrder">Order number (if you have one)</label>
+        <input id="ContactOrder" type="text" name="contact[order_number]" placeholder="#1001">
+      </div>
+      <div class="field">
+        <label for="ContactBody">How can we help? <span aria-hidden="true">*</span></label>
+        <textarea id="ContactBody" name="contact[body]" rows="6" required>{{ form.body }}</textarea>
+      </div>
+      <button class="btn btn--dark" type="submit">Send message</button>
+      <p class="form-note" style="margin-top:12px">Or email us directly: <a href="mailto:{{ section.settings.email }}">{{ section.settings.email }}</a></p>
+    {%- endform -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Contact form",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Talk to a human" },
+    { "type": "richtext", "id": "text", "label": "Text", "default": "<p>Questions about your order, your knives, or gifting? We answer every message within 1 business day (Mon–Fri).</p>" },
+    { "type": "text", "id": "email", "label": "Support email", "default": "hello@keenroll.com" }
+  ]
+}
+{% endschema %}

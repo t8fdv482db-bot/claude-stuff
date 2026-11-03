@@ -1,0 +1,48 @@
+<footer class="footer">
+  <div class="container">
+    <div class="footer__grid">
+      <div>
+        <img class="footer__logo" src="{{ 'keenroll-logo-light.svg' | asset_url }}" alt="{{ shop.name }}" width="126" height="30">
+        <p>{{ section.settings.blurb }}</p>
+        {%- if section.settings.email != blank -%}
+          <p><a href="mailto:{{ section.settings.email }}">{{ section.settings.email }}</a></p>
+        {%- endif -%}
+      </div>
+      <div>
+        <h4>Help</h4>
+        <ul>
+          <li><a href="/pages/track-order">Track your order</a></li>
+          <li><a href="/pages/contact">Contact us</a></li>
+          <li><a href="{{ shop.shipping_policy.url | default: '/policies/shipping-policy' }}">Shipping policy</a></li>
+          <li><a href="{{ shop.refund_policy.url | default: '/policies/refund-policy' }}">Returns &amp; refunds</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="/pages/about">Our story</a></li>
+          <li><a href="{{ shop.privacy_policy.url | default: '/policies/privacy-policy' }}">Privacy policy</a></li>
+          <li><a href="{{ shop.terms_of_service.url | default: '/policies/terms-of-service' }}">Terms of service</a></li>
+          {%- if section.settings.tiktok != blank -%}<li><a href="{{ section.settings.tiktok }}" rel="noopener">TikTok</a></li>{%- endif -%}
+          {%- if section.settings.instagram != blank -%}<li><a href="{{ section.settings.instagram }}" rel="noopener">Instagram</a></li>{%- endif -%}
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <span>&copy; {{ 'now' | date: '%Y' }} {{ shop.name }}. All rights reserved.</span>
+      <span>Keep knives away from children. Always cut away from your body.</span>
+    </div>
+  </div>
+</footer>
+
+{% schema %}
+{
+  "name": "Footer",
+  "settings": [
+    { "type": "textarea", "id": "blurb", "label": "Short blurb", "default": "Sharp knives, zero skill. Keenroll makes knife care something you'll actually do." },
+    { "type": "text", "id": "email", "label": "Support email", "default": "hello@keenroll.com" },
+    { "type": "text", "id": "tiktok", "label": "TikTok URL" },
+    { "type": "text", "id": "instagram", "label": "Instagram URL" }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,39 @@
+{%- comment -%}
+  Reviews: NO invented reviews. Install a reviews app (e.g. Judge.me) and add its
+  app block here in the theme editor. Until real verified reviews exist, the
+  placeholder below is shown.
+{%- endcomment -%}
+<section class="section" id="reviews">
+  <div class="container narrow">
+    <div class="center" style="margin-bottom:24px">
+      <span class="eyebrow">{{ section.settings.eyebrow }}</span>
+      <h2>{{ section.settings.heading }}</h2>
+    </div>
+    {%- if section.blocks.size > 0 -%}
+      {%- for block in section.blocks -%}
+        {%- case block.type -%}
+          {%- when '@app' -%}{% render block %}
+        {%- endcase -%}
+      {%- endfor -%}
+    {%- else -%}
+      <div class="reviews-empty">
+        <p style="font-weight:700;margin-bottom:.3em">{{ section.settings.empty_title }}</p>
+        <p class="muted" style="margin:0">{{ section.settings.empty_text }}</p>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Reviews",
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Reviews" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "What customers say" },
+    { "type": "text", "id": "empty_title", "label": "Placeholder title", "default": "We're new, and we only show real reviews." },
+    { "type": "textarea", "id": "empty_text", "label": "Placeholder text", "default": "Verified buyer reviews will appear here as soon as our first customers share them. Bought one? We'll email you a review link after delivery." }
+  ],
+  "blocks": [{ "type": "@app" }],
+  "presets": [{ "name": "Reviews" }]
+}
+{% endschema %}

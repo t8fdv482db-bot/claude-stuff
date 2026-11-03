@@ -1,0 +1,56 @@
+{%- assign menu = linklists[section.settings.menu] -%}
+<header class="header">
+  <div class="container header__inner">
+    <button class="icon-btn menu-toggle" type="button" data-menu-toggle aria-controls="MobileNav" aria-expanded="false" aria-label="Open menu">
+      {% render 'icon', name: 'menu' %}
+    </button>
+
+    <a class="header__logo" href="{{ routes.root_url }}" aria-label="{{ shop.name }} home">
+      {%- if section.settings.logo != blank -%}
+        {{ section.settings.logo | image_url: width: 300 | image_tag: alt: shop.name, height: 34 }}
+      {%- else -%}
+        <img src="{{ 'keenroll-logo.svg' | asset_url }}" alt="{{ shop.name }}" width="143" height="34">
+      {%- endif -%}
+    </a>
+
+    <nav class="header__nav" aria-label="Main">
+      {%- if menu.links.size > 0 -%}
+        {%- for link in menu.links -%}<a href="{{ link.url }}">{{ link.title }}</a>{%- endfor -%}
+      {%- else -%}
+        <a href="{{ section.settings.product_url }}">Shop</a>
+        <a href="/pages/about">Our story</a>
+        <a href="/pages/track-order">Track order</a>
+        <a href="/pages/contact">Contact</a>
+      {%- endif -%}
+    </nav>
+
+    <div class="header__actions">
+      <a class="btn btn--primary" href="{{ section.settings.product_url }}" style="min-height:40px;padding:8px 16px;font-size:.88rem">Shop</a>
+      <a class="icon-btn" href="{{ routes.cart_url }}" aria-label="Cart ({{ cart.item_count }} items)">
+        {% render 'icon', name: 'cart' %}
+        {%- if cart.item_count > 0 -%}<span class="cart-count">{{ cart.item_count }}</span>{%- endif -%}
+      </a>
+    </div>
+  </div>
+  <nav id="MobileNav" class="mobile-nav" aria-label="Mobile">
+    {%- if menu.links.size > 0 -%}
+      {%- for link in menu.links -%}<a href="{{ link.url }}">{{ link.title }}</a>{%- endfor -%}
+    {%- else -%}
+      <a href="{{ section.settings.product_url }}">Shop the Keenroll kit</a>
+      <a href="/pages/about">Our story</a>
+      <a href="/pages/track-order">Track your order</a>
+      <a href="/pages/contact">Contact us</a>
+    {%- endif -%}
+  </nav>
+</header>
+
+{% schema %}
+{
+  "name": "Header",
+  "settings": [
+    { "type": "image_picker", "id": "logo", "label": "Logo image (optional, defaults to the Keenroll SVG)" },
+    { "type": "link_list", "id": "menu", "label": "Menu", "default": "main-menu" },
+    { "type": "text", "id": "product_url", "label": "Main product URL", "default": "/products/keenroll-rolling-knife-sharpener" }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,24 @@
+<section class="section {% if section.settings.white %}section--white{% endif %}">
+  <div class="container narrow {% if section.settings.center %}center{% endif %}">
+    {%- if section.settings.eyebrow != blank -%}<span class="eyebrow">{{ section.settings.eyebrow }}</span>{%- endif -%}
+    {%- if section.settings.heading != blank -%}
+      {%- if section.settings.is_h1 -%}<h1>{{ section.settings.heading }}</h1>{%- else -%}<h2>{{ section.settings.heading }}</h2>{%- endif -%}
+    {%- endif -%}
+    <div class="rte" style="font-size:1.08rem">{{ section.settings.text }}</div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Rich text",
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Heading" },
+    { "type": "checkbox", "id": "is_h1", "label": "Use as page title (H1)", "default": false },
+    { "type": "richtext", "id": "text", "label": "Text", "default": "<p>Write something.</p>" },
+    { "type": "checkbox", "id": "center", "label": "Center text", "default": false },
+    { "type": "checkbox", "id": "white", "label": "White background", "default": false }
+  ],
+  "presets": [{ "name": "Rich text" }]
+}
+{% endschema %}

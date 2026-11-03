@@ -1,0 +1,19 @@
+{%- if section.settings.text != blank -%}
+<div class="announcement" role="region" aria-label="Announcement">
+  {%- if section.settings.link != blank -%}
+    <a href="{{ section.settings.link }}">{{ section.settings.text }}</a>
+  {%- else -%}
+    {{ section.settings.text }}
+  {%- endif -%}
+</div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Announcement bar",
+  "settings": [
+    { "type": "text", "id": "text", "label": "Text", "default": "Free US shipping on every order · 60-day \"sharp or it's free\" guarantee", "info": "Keep it truthful. No fake countdowns or stock counts." },
+    { "type": "text", "id": "link", "label": "Link (optional)" }
+  ]
+}
+{% endschema %}

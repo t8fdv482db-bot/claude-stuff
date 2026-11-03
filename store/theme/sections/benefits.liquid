@@ -1,0 +1,46 @@
+<section class="section {% if section.settings.white %}section--white{% endif %}" id="{{ section.settings.anchor | default: section.id }}">
+  <div class="container">
+    <div class="center narrow" style="margin:0 auto 32px">
+      {%- if section.settings.eyebrow != blank -%}<span class="eyebrow">{{ section.settings.eyebrow }}</span>{%- endif -%}
+      <h2>{{ section.settings.heading }}</h2>
+      {%- if section.settings.text != blank -%}<p class="muted">{{ section.settings.text }}</p>{%- endif -%}
+    </div>
+    <div class="grid grid--{{ section.settings.columns }}">
+      {%- for block in section.blocks -%}
+        <div class="card" {{ block.shopify_attributes }}>
+          <div class="card__icon">{% render 'icon', name: block.settings.icon %}</div>
+          <h3>{{ block.settings.title }}</h3>
+          <p>{{ block.settings.text }}</p>
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Benefits grid",
+  "settings": [
+    { "type": "text", "id": "anchor", "label": "Anchor ID (optional)" },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Why it works" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Sharp knives without the learning curve" },
+    { "type": "textarea", "id": "text", "label": "Intro" },
+    { "type": "select", "id": "columns", "label": "Columns (desktop)", "default": "4", "options": [{"value":"2","label":"2"},{"value":"3","label":"3"},{"value":"4","label":"4"}] },
+    { "type": "checkbox", "id": "white", "label": "White background", "default": false }
+  ],
+  "blocks": [
+    {
+      "type": "benefit",
+      "name": "Benefit",
+      "settings": [
+        { "type": "select", "id": "icon", "label": "Icon", "default": "check", "options": [
+          {"value":"check","label":"Check"},{"value":"angle","label":"Angle"},{"value":"magnet","label":"Magnet"},{"value":"diamond","label":"Diamond"},
+          {"value":"clock","label":"Clock"},{"value":"gift","label":"Gift"},{"value":"shield","label":"Shield"},{"value":"leaf","label":"Leaf"},{"value":"knife","label":"Knife"},{"value":"truck","label":"Truck"}] },
+        { "type": "text", "id": "title", "label": "Title", "default": "Benefit" },
+        { "type": "textarea", "id": "text", "label": "Text", "default": "Describe the benefit." }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Benefits grid" }]
+}
+{% endschema %}

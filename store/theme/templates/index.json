@@ -1,0 +1,233 @@
+{
+  "sections": {
+    "hero": {
+      "type": "hero",
+      "settings": {}
+    },
+    "benefits": {
+      "type": "benefits",
+      "settings": {
+        "eyebrow": "Why it works",
+        "heading": "Sharp knives without the learning curve",
+        "columns": "4",
+        "white": true
+      },
+      "blocks": {
+        "b_1": {
+          "type": "benefit",
+          "settings": {
+            "icon": "angle",
+            "title": "Locked-in angle",
+            "text": "The magnetic block holds your blade at exactly 15° or 20°. No wobble, no guesswork, no \"am I doing this right?\""
+          }
+        },
+        "b_2": {
+          "type": "benefit",
+          "settings": {
+            "icon": "clock",
+            "title": "About a minute",
+            "text": "20 rolls a side on diamond, 10 on ceramic. Done before the pasta water boils."
+          }
+        },
+        "b_3": {
+          "type": "benefit",
+          "settings": {
+            "icon": "diamond",
+            "title": "Diamond + ceramic",
+            "text": "The diamond disc sets the edge. The ceramic disc polishes it smooth."
+          }
+        },
+        "b_4": {
+          "type": "benefit",
+          "settings": {
+            "icon": "gift",
+            "title": "Made for gifting",
+            "text": "Solid wood, a satisfying magnet, and a gift-ready box. It looks like more than it costs."
+          }
+        }
+      },
+      "block_order": [
+        "b_1",
+        "b_2",
+        "b_3",
+        "b_4"
+      ]
+    },
+    "how": {
+      "type": "how-it-works",
+      "settings": {},
+      "blocks": {
+        "b_1": {
+          "type": "step",
+          "settings": {
+            "title": "Stick",
+            "text": "Set your knife on the magnetic block. Use the 15° side for thin Japanese-style knives and 20° for Western knives."
+          }
+        },
+        "b_2": {
+          "type": "step",
+          "settings": {
+            "title": "Roll",
+            "text": "Roll the diamond disc along the edge about 20 times. Flip the knife over and repeat."
+          }
+        },
+        "b_3": {
+          "type": "step",
+          "settings": {
+            "title": "Polish & slice",
+            "text": "Switch to the ceramic disc for about 10 rolls per side. Then slice a tomato and enjoy it."
+          }
+        }
+      },
+      "block_order": [
+        "b_1",
+        "b_2",
+        "b_3"
+      ]
+    },
+    "compare": {
+      "type": "comparison",
+      "settings": {},
+      "blocks": {
+        "b_1": {
+          "type": "row",
+          "settings": {
+            "feature": "Easy for beginners",
+            "us": "✓",
+            "a": "✓",
+            "b": "✗ Steep learning curve",
+            "c": "✓"
+          }
+        },
+        "b_2": {
+          "type": "row",
+          "settings": {
+            "feature": "Choose your angle (15° / 20°)",
+            "us": "✓",
+            "a": "✗ Usually one fixed slot",
+            "b": "✓ If you're skilled",
+            "c": "Some models"
+          }
+        },
+        "b_3": {
+          "type": "row",
+          "settings": {
+            "feature": "Even, controlled sharpening",
+            "us": "✓",
+            "a": "✗ Can chip or tear edges",
+            "b": "✓",
+            "c": "Aggressive"
+          }
+        },
+        "b_4": {
+          "type": "row",
+          "settings": {
+            "feature": "No water, power, or mess",
+            "us": "✓",
+            "a": "✓",
+            "b": "✗ Soaking & slurry",
+            "c": "✗ Needs an outlet"
+          }
+        },
+        "b_5": {
+          "type": "row",
+          "settings": {
+            "feature": "Typical price",
+            "us": "$59 kit",
+            "a": "$10–25",
+            "b": "$30–80 + practice",
+            "c": "$50–200"
+          }
+        },
+        "b_6": {
+          "type": "row",
+          "settings": {
+            "feature": "Nice enough to gift",
+            "us": "✓",
+            "a": "✗",
+            "b": "Meh",
+            "c": "✗"
+          }
+        }
+      },
+      "block_order": [
+        "b_1",
+        "b_2",
+        "b_3",
+        "b_4",
+        "b_5",
+        "b_6"
+      ]
+    },
+    "reviews": {
+      "type": "reviews",
+      "settings": {}
+    },
+    "guarantee": {
+      "type": "guarantee",
+      "settings": {}
+    },
+    "faq": {
+      "type": "faq",
+      "settings": {},
+      "blocks": {
+        "b_1": {
+          "type": "question",
+          "settings": {
+            "question": "Will it work on my knives?",
+            "answer": "<p>It works on most <strong>straight-edged</strong> (non-serrated) steel kitchen, chef, santoku, paring, and pocket knives. It's <strong>not</strong> for serrated bread knives, scissors, ceramic knives, or single-bevel Japanese knives (yanagiba, deba).</p>"
+          }
+        },
+        "b_2": {
+          "type": "question",
+          "settings": {
+            "question": "15° or 20°: which side do I use?",
+            "answer": "<p><strong>15°</strong> for thin Japanese-style knives (santoku, gyuto). <strong>20°</strong> for most Western/German-style chef knives. Not sure? Start with 20°.</p>"
+          }
+        },
+        "b_3": {
+          "type": "question",
+          "settings": {
+            "question": "Will it damage my good knives?",
+            "answer": "<p>A fixed angle means you sharpen the edge you already have instead of grinding a new one. Start with fewer rolls (10–20 per side) and check the edge. You can always do more. Pull-through sharpeners work differently: they scrape the edge through a fixed V-slot.</p>"
+          }
+        },
+        "b_4": {
+          "type": "question",
+          "settings": {
+            "question": "How long does shipping take?",
+            "answer": "<p>Orders are processed in 1–3 business days. US delivery then takes about 7–12 business days, so plan on <strong>8–15 business days total</strong>. You'll get a tracking number by email. Full details are on our <a href=\"/policies/shipping-policy\">shipping policy</a>.</p>"
+          }
+        },
+        "b_5": {
+          "type": "question",
+          "settings": {
+            "question": "What if it doesn't work for me?",
+            "answer": "<p>You have 60 days from delivery. If it doesn't sharpen your knives, email us for a full refund. See our <a href=\"/policies/refund-policy\">refund policy</a>.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "b_1",
+        "b_2",
+        "b_3",
+        "b_4",
+        "b_5"
+      ]
+    },
+    "cta": {
+      "type": "cta-banner",
+      "settings": {}
+    }
+  },
+  "order": [
+    "hero",
+    "benefits",
+    "how",
+    "compare",
+    "reviews",
+    "guarantee",
+    "faq",
+    "cta"
+  ]
+}

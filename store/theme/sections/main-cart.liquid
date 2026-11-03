@@ -1,0 +1,46 @@
+<section class="section">
+  <div class="container narrow">
+    <h1>Your cart</h1>
+    {%- if cart.item_count > 0 -%}
+      <form action="{{ routes.cart_url }}" method="post" id="CartForm">
+        {%- for item in cart.items -%}
+          <div class="cart-line">
+            {%- if item.image -%}
+              <img src="{{ item.image | image_url: width: 160 }}" alt="{{ item.title | escape }}" width="72" height="72">
+            {%- else -%}
+              <img src="{{ 'keenroll-placeholder.svg' | asset_url }}" alt="" width="72" height="72">
+            {%- endif -%}
+            <div>
+              <a href="{{ item.url }}" style="font-weight:700;text-decoration:none">{{ item.product.title }}</a>
+              {%- unless item.product.has_only_default_variant -%}<div class="form-note">{{ item.variant.title }}</div>{%- endunless -%}
+              <div class="qty">
+                <label class="visually-hidden" for="Qty-{{ forloop.index }}">Quantity</label>
+                <input id="Qty-{{ forloop.index }}" type="number" name="updates[]" value="{{ item.quantity }}" min="0">
+              </div>
+              <a href="{{ item.url_to_remove }}" class="form-note" style="margin-left:10px">Remove</a>
+            </div>
+            <div style="font-weight:700">{{ item.final_line_price | money }}</div>
+          </div>
+        {%- endfor -%}
+
+        <div class="cart-summary">
+          <div style="display:flex;justify-content:space-between;font-weight:700;font-size:1.15rem"><span>Subtotal</span><span>{{ cart.total_price | money }}</span></div>
+          <p class="form-note">Free US shipping. Taxes calculated at checkout.</p>
+          <div class="field">
+            <label for="CartNote">Gift note (optional)</label>
+            <textarea id="CartNote" name="note" rows="2" placeholder="Happy holidays! ...">{{ cart.note }}</textarea>
+          </div>
+          <button type="submit" name="checkout" class="btn btn--primary btn--block">Check out securely</button>
+          <button type="submit" name="update" class="btn btn--ghost btn--block" style="margin-top:10px;min-height:44px">Update cart</button>
+        </div>
+      </form>
+    {%- else -%}
+      <p>Your cart is empty.</p>
+      <a class="btn btn--primary" href="/products/keenroll-rolling-knife-sharpener">Shop Keenroll</a>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Cart", "settings": [] }
+{% endschema %}

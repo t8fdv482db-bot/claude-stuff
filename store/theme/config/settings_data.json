@@ -1,0 +1,14 @@
+{
+  "current": "Default",
+  "presets": {
+    "Default": {
+      "color_ink": "#1C1D1F",
+      "color_wood": "#8A5A3B",
+      "color_cream": "#F6F1E9",
+      "color_steel": "#9AA3AB",
+      "color_accent": "#E8692C",
+      "delivery_min_days": 8,
+      "delivery_max_days": 15
+    }
+  }
+}

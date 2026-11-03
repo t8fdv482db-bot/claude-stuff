@@ -1,0 +1,62 @@
+{%- comment -%}
+  Lightweight section used by templates this one-product store rarely needs
+  (404, search, collection, list-collections, blog, article, password).
+{%- endcomment -%}
+<section class="section">
+  <div class="container narrow">
+    {%- case template.name -%}
+      {%- when '404' -%}
+        <h1>Page not found</h1>
+        <p>That page doesn't exist (or got a little too sharp and cut itself off).</p>
+        <a class="btn btn--primary" href="/products/keenroll-rolling-knife-sharpener">Shop Keenroll</a>
+
+      {%- when 'search' -%}
+        <h1>Search</h1>
+        <form action="{{ routes.search_url }}" method="get" role="search" class="field">
+          <label for="q" class="visually-hidden">Search</label>
+          <input id="q" type="search" name="q" value="{{ search.terms | escape }}" placeholder="Search">
+        </form>
+        {%- if search.performed -%}
+          {%- for item in search.results -%}<p><a href="{{ item.url }}">{{ item.title }}</a></p>{%- else -%}<p>No results.</p>{%- endfor -%}
+        {%- endif -%}
+
+      {%- when 'collection' or 'list-collections' -%}
+        <h1>{{ collection.title | default: 'Shop' }}</h1>
+        <div class="grid grid--3">
+          {%- for p in collection.products -%}
+            <a class="card" href="{{ p.url }}" style="text-decoration:none">
+              <h3>{{ p.title }}</h3>
+              <p>{{ p.price | money }}</p>
+            </a>
+          {%- else -%}
+            <a class="btn btn--primary" href="/products/keenroll-rolling-knife-sharpener">Shop Keenroll</a>
+          {%- endfor -%}
+        </div>
+
+      {%- when 'blog' -%}
+        <h1>{{ blog.title }}</h1>
+        {%- for article in blog.articles -%}
+          <p><a href="{{ article.url }}"><strong>{{ article.title }}</strong></a><br><span class="form-note">{{ article.published_at | date: '%b %d, %Y' }}</span></p>
+        {%- endfor -%}
+
+      {%- when 'article' -%}
+        <h1>{{ article.title }}</h1>
+        <div class="rte">{{ article.content }}</div>
+
+      {%- when 'password' -%}
+        <div class="center">
+          <img src="{{ 'keenroll-logo.svg' | asset_url }}" alt="{{ shop.name }}" width="200" height="47" style="margin:0 auto 24px">
+          <h1>Opening soon</h1>
+          <p>{{ shop.password_message }}</p>
+          {%- form 'storefront_password' -%}
+            <div class="field"><label for="Password">Store password</label><input id="Password" type="password" name="password"></div>
+            <button class="btn btn--dark" type="submit">Enter</button>
+          {%- endform -%}
+        </div>
+    {%- endcase -%}
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Generic content", "settings": [] }
+{% endschema %}

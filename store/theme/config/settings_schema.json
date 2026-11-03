@@ -1,0 +1,82 @@
+[
+  {
+    "name": "theme_info",
+    "theme_name": "Keenroll",
+    "theme_version": "1.0.0",
+    "theme_author": "Keenroll",
+    "theme_documentation_url": "https://shopify.dev/docs/themes",
+    "theme_support_url": "https://help.shopify.com"
+  },
+  {
+    "name": "Colors",
+    "settings": [
+      {
+        "type": "color",
+        "id": "color_ink",
+        "label": "Ink (text)",
+        "default": "#1C1D1F"
+      },
+      {
+        "type": "color",
+        "id": "color_wood",
+        "label": "Walnut",
+        "default": "#8A5A3B"
+      },
+      {
+        "type": "color",
+        "id": "color_cream",
+        "label": "Cream (background)",
+        "default": "#F6F1E9"
+      },
+      {
+        "type": "color",
+        "id": "color_steel",
+        "label": "Steel",
+        "default": "#9AA3AB"
+      },
+      {
+        "type": "color",
+        "id": "color_accent",
+        "label": "Edge orange (buttons)",
+        "default": "#E8692C"
+      }
+    ]
+  },
+  {
+    "name": "Shipping estimate",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Used for the delivery-date estimate on the product page. Set from your supplier's REAL processing + transit time (business days)."
+      },
+      {
+        "type": "range",
+        "id": "delivery_min_days",
+        "label": "Min business days",
+        "min": 1,
+        "max": 30,
+        "step": 1,
+        "default": 8
+      },
+      {
+        "type": "range",
+        "id": "delivery_max_days",
+        "label": "Max business days",
+        "min": 1,
+        "max": 30,
+        "step": 1,
+        "default": 15
+      }
+    ]
+  },
+  {
+    "name": "Favicon",
+    "settings": [
+      {
+        "type": "image_picker",
+        "id": "favicon",
+        "label": "Favicon (32×32 PNG)"
+      }
+    ]
+  }
+]
