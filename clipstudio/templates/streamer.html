@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ s.name }} · Clip Studio{% endblock %}
+{% block content %}
+<p><a href="/streamers">← Streamers</a></p>
+<div class="card">
+  <div class="form-grid">
+    <label>Name <input id="name" value="{{ s.name }}"></label>
+    <label>Layout
+      <select id="layout">
+        <option value="split" {{ 'selected' if s.layout == 'split' }}>Split — facecam top, gameplay bottom</option>
+        <option value="blur" {{ 'selected' if s.layout == 'blur' }}>Blur — full frame over blurred copy</option>
+        <option value="center" {{ 'selected' if s.layout == 'center' }}>Center crop</option>
+      </select>
+    </label>
+    <label>Default tags (comma separated) <input id="default_tags" value="{{ s.default_tags or '' }}" placeholder="#lacy, #gta6, #shorts"></label>
+  </div>
+  <div class="form-grid" style="margin-top:12px">
+    <label>Hype words / phrases (one per line) — boosts the transcript score
+      <textarea id="hype_words" rows="5" placeholder="let's go&#10;no shot&#10;chat look">{{ s.hype_words or '' }}</textarea></label>
+    <label>Channel links (one per line, optional)
+      <textarea id="channels" rows="5" placeholder="https://www.twitch.tv/…&#10;https://kick.com/…">{{ s.channels or '' }}</textarea></label>
+  </div>
+  <div class="row" style="margin-top:12px"><button id="save" class="primary">Save</button><span class="spacer"></span><button id="delete" class="danger">Delete streamer</button></div>
+</div>
+
+<h2>Facecam picker</h2>
+<div class="card">
+  <p class="muted small">1) Grab a frame from any of their videos/streams (or upload a screenshot). 2) Drag a rectangle over the facecam. 3) Save. The preview on the right shows the final 9:16 split layout.</p>
+  <div class="row">
+    <input id="frame-url" placeholder="Link to a video, VOD or live channel" style="flex:1;min-width:260px">
+    <input id="frame-t" value="10:00" style="width:100px" title="Timestamp, e.g. 1:23:45">
+    <button id="grab">Grab frame</button>
+    <label class="btn" style="flex-direction:row">Upload screenshot<input id="upload" type="file" accept="image/*" class="hidden"></label>
+    <span id="grab-msg" class="muted small"></span>
+  </div>
+  <div class="picker" style="margin-top:14px">
+    <div>
+      <div class="frame-wrap" id="wrap">
+        <img id="frame" alt="" src="{{ s.frame_url or '' }}" class="{{ '' if s.frame_url else 'hidden' }}" draggable="false">
+        <div id="box" class="sel-box hidden"></div>
+        <p id="noframe" class="muted {{ 'hidden' if s.frame_url }}" style="padding:40px;text-align:center">No frame yet — grab one above.</p>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <span id="box-txt" class="muted small"></span><span class="spacer"></span>
+        <button id="clear-box">Clear box</button>
+        <button id="save-box" class="primary">Save facecam</button>
+      </div>
+    </div>
+    <div><canvas id="preview" class="preview916" width="270" height="480"></canvas><p class="muted small">9:16 preview</p></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>window.STREAMER = {{ s_json|safe }};</script>
+<script src="/static/streamer.js"></script>
+{% endblock %}

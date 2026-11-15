@@ -349,3 +349,151 @@ def clip_media(clip_id: int, kind: str):
     if not c or not col or not c.get(col) or not Path(c[col]).exists():
         raise HTTPException(404, "Not rendered yet")
     return FileResponse(c[col], headers={"Cache-Control": "max-age=3600"})
+
+
+# ---------------------------------------------------------------- streamers
+def _streamer_out(s: dict) -> dict:
+    s = dict(s)
+    try:
+        s["facecam"] = json.loads(s["facecam"]) if s.get("facecam") else None
+    except ValueError:
+        s["facecam"] = None
+    f = db.storage_dir() / "streamers" / str(s["id"]) / "frame.jpg"
+    s["frame_url"] = f"/media/streamer/{s['id']}/frame?v={int(f.stat().st_mtime)}" if f.exists() else None
+    return s
+
+
+@app.get("/streamers", response_class=HTMLResponse)
+def streamers_page(request: Request):
+    rows = db.q("SELECT * FROM streamers ORDER BY name")
+    counts = {r["streamer_id"]: r["n"] for r in db.q("SELECT streamer_id, COUNT(*) n FROM clips GROUP BY streamer_id")}
+    return page(request, "streamers.html", streamers=[dict(_streamer_out(s), clips=counts.get(s["id"], 0)) for s in rows])
+
+
+@app.get("/streamers/{sid}", response_class=HTMLResponse)
+def streamer_page(request: Request, sid: int):
+    s = db.get("streamers", sid)
+    if not s:
+        raise HTTPException(404, "No such streamer")
+    return page(request, "streamer.html", s=_streamer_out(s), s_json=json.dumps(_streamer_out(s)))
+
+
+@app.get("/api/streamers")
+def api_streamers():
+    return {"streamers": [_streamer_out(s) for s in db.q("SELECT * FROM streamers ORDER BY name")]}
+
+
+@app.post("/api/streamers")
+async def create_streamer(request: Request):
+    data = body_json(await request.body())
+    name = str(data.get("name", "")).strip()[:60]
+    if not name:
+        raise HTTPException(400, "Give the streamer a name.")
+    sid = db.insert("streamers", name=name, layout=db.setting("default_layout") or "split")
+    return _streamer_out(db.get("streamers", sid))
+
+
+@app.put("/api/streamers/{sid}")
+async def update_streamer(sid: int, request: Request):
+    if not db.get("streamers", sid):
+        raise HTTPException(404, "No such streamer")
+    data = body_json(await request.body())
+    vals = {}
+    for k in ("name", "hype_words", "default_tags", "channels"):
+        if k in data:
+            vals[k] = str(data[k] or "")[:5000]
+    if "layout" in data:
+        if data["layout"] not in ("split", "blur", "center"):
+            raise HTTPException(400, "Unknown layout")
+        vals["layout"] = data["layout"]
+    if "facecam" in data:
+        fc = data["facecam"]
+        if fc is None:
+            vals["facecam"] = None
+        else:
+            try:
+                box = {k: round(min(1.0, max(0.0, float(fc[k]))), 4) for k in ("x", "y", "w", "h")}
+            except (KeyError, TypeError, ValueError) as e:
+                raise HTTPException(400, "Facecam box needs x, y, w, h fractions") from e
+            if box["w"] < 0.03 or box["h"] < 0.03 or box["x"] + box["w"] > 1.001 or box["y"] + box["h"] > 1.001:
+                raise HTTPException(400, "That facecam box is too small or outside the frame.")
+            vals["facecam"] = json.dumps(box)
+    db.update("streamers", sid, **vals)
+    return _streamer_out(db.get("streamers", sid))
+
+
+@app.delete("/api/streamers/{sid}")
+def delete_streamer(sid: int):
+    db.ex("DELETE FROM streamers WHERE id=?", (sid,))
+    return {"ok": True}
+
+
+@app.post("/api/streamers/{sid}/frame")
+async def streamer_frame(sid: int, request: Request):
+    from .frames import grab
+    from .media import UserError
+    if not db.get("streamers", sid):
+        raise HTTPException(404, "No such streamer")
+    data = body_json(await request.body())
+    url = str(data.get("url", "")).strip()
+    t = _parse_time(str(data.get("t", "0")))
+    out = db.storage_dir() / "streamers" / str(sid) / "frame.jpg"
+    try:
+        await asyncio.to_thread(grab, url, t, out)
+    except UserError as e:
+        raise HTTPException(400, str(e)) from e
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(400, f"Couldn't grab a frame: {str(e)[:300]}") from e
+    return _streamer_out(db.get("streamers", sid))
+
+
+@app.post("/api/streamers/{sid}/frame-upload")
+async def streamer_frame_upload(sid: int, request: Request):
+    if not db.get("streamers", sid):
+        raise HTTPException(404, "No such streamer")
+    form = await request.form()
+    f = form.get("file")
+    if f is None or not hasattr(f, "read"):
+        raise HTTPException(400, "Choose an image file.")
+    raw = await f.read()
+    if len(raw) > 20 * 1024 * 1024:
+        raise HTTPException(400, "Image is too large (max 20 MB).")
+    d = db.storage_dir() / "streamers" / str(sid)
+    d.mkdir(parents=True, exist_ok=True)
+    tmp = d / ("upload" + Path(getattr(f, "filename", "x.png") or "x.png").suffix.lower()[:6])
+    tmp.write_bytes(raw)
+    from .media import run as _run
+    try:
+        await asyncio.to_thread(_run, ["ffmpeg", "-nostdin", "-y", "-v", "error", "-i", str(tmp),
+                                       "-frames:v", "1", "-q:v", "3", str(d / "frame.jpg")])
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(400, "That file isn't an image ffmpeg can read.") from e
+    finally:
+        tmp.unlink(missing_ok=True)
+    return _streamer_out(db.get("streamers", sid))
+
+
+@app.get("/media/streamer/{sid}/frame")
+def streamer_frame_img(sid: int):
+    from fastapi.responses import FileResponse
+    p = db.storage_dir() / "streamers" / str(sid) / "frame.jpg"
+    if not p.exists():
+        raise HTTPException(404, "No frame yet")
+    return FileResponse(p)
+
+
+def _parse_time(s: str) -> float:
+    """'1:23:45', '83:10', '125' or '2h3m4s' → seconds."""
+    import re
+    s = s.strip().lower()
+    m = re.fullmatch(r"(?:(\d+)h)?(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?", s)
+    if m and any(m.groups()):
+        h, mi, se = (float(x) if x else 0.0 for x in m.groups())
+        return h * 3600 + mi * 60 + se
+    total = 0.0
+    try:
+        for part in s.split(":"):
+            total = total * 60 + float(part or 0)
+    except ValueError as e:
+        raise HTTPException(400, "Timestamp should look like 1:23:45 or 125") from e
+    return total
