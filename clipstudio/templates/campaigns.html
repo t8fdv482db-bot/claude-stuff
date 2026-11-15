@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Campaigns · Clip Studio{% endblock %}
+{% block content %}
+<h1>Campaign profiles</h1>
+<p class="muted">Rules for paid clipping campaigns (Whop / Content Rewards…). Pick a campaign on a job and Clip Studio burns the disclosure,
+adds the required tags, keeps clips within the length limits and warns you about anything that breaks the rules.</p>
+<div id="list"></div>
+<button id="add" class="primary" style="margin-top:12px">+ New campaign</button>
+<template id="tpl">
+  <div class="card camp" style="margin-bottom:12px">
+    <div class="form-grid">
+      <label>Name <input data-k="name"></label>
+      <label>Payout notes <input data-k="payout_notes" placeholder="$1.50 / 1k views, max $500"></label>
+      <label>Submission page link <input data-k="submit_url" placeholder="https://whop.com/…"></label>
+      <label>Submit window (minutes) <input data-k="submit_window_min" type="number" min="1"></label>
+      <label>Min length (s, 0 = none) <input data-k="min_len" type="number" min="0"></label>
+      <label>Max length (s, 0 = none) <input data-k="max_len" type="number" min="0"></label>
+      <label>Required disclosure text <input data-k="disclosure" placeholder="#ad · Sponsored by …"></label>
+      <label>Show disclosure for (s) <input data-k="disclosure_seconds" type="number" min="1" step="0.5"></label>
+      <label>Required hashtags / mentions <input data-k="hashtags" placeholder="#clipping, @brand"></label>
+      <label>Footage must come from (channel name, optional) <input data-k="required_source" placeholder="lacy"></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <span class="muted small">Allowed platforms:</span>
+      <label class="toggle"><input type="checkbox" data-p="youtube"> YouTube</label>
+      <label class="toggle"><input type="checkbox" data-p="tiktok"> TikTok</label>
+      <label class="toggle"><input type="checkbox" data-p="instagram"> Instagram</label>
+      <label class="toggle"><input type="checkbox" data-p="x"> X</label>
+      <span class="spacer"></span>
+      <button class="primary" data-act="save">Save</button>
+      <button class="danger" data-act="delete">Delete</button>
+    </div>
+  </div>
+</template>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const list = document.getElementById("list"), tpl = document.getElementById("tpl");
+  function add(c) {
+    const el = tpl.content.firstElementChild.cloneNode(true);
+    el.dataset.id = c.id || "";
+    el.querySelectorAll("[data-k]").forEach((i) => (i.value = c[i.dataset.k] ?? ""));
+    el.querySelectorAll("[data-p]").forEach((i) => (i.checked = (c.platforms || ["youtube", "tiktok", "instagram", "x"]).includes(i.dataset.p)));
+    list.appendChild(el);
+    return el;
+  }
+  {{ campaigns_json|safe }}.forEach(add);
+  document.getElementById("add").onclick = () => add({ submit_window_min: 30, disclosure_seconds: 3 }).querySelector("[data-k=name]").focus();
+  list.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const el = b.closest(".camp"), id = el.dataset.id;
+    try {
+      if (b.dataset.act === "delete") {
+        if (id && !confirm("Delete this campaign?")) return;
+        if (id) await CS.api("DELETE", "/api/campaigns/" + id);
+        el.remove(); return;
+      }
+      const body = {}; el.querySelectorAll("[data-k]").forEach((i) => (body[i.dataset.k] = i.value));
+      body.platforms = [...el.querySelectorAll("[data-p]:checked")].map((i) => i.dataset.p);
+      const r = id ? await CS.api("PUT", "/api/campaigns/" + id, body) : await CS.api("POST", "/api/campaigns", body);
+      el.dataset.id = r.id; CS.toast("Campaign saved", "ok");
+    } catch (err) { CS.toast(err.message, "error"); }
+  });
+})();
+</script>
+{% endblock %}

@@ -528,3 +528,118 @@ async def regen_title(clip_id: int):
     db.update("clips", clip_id, **vals)
     publish_clip(clip_id)
     return _clip_out(db.get("clips", clip_id))
+
+
+# ---------------------------------------------------------------- campaigns
+CAMPAIGN_FIELDS = {"name": str, "payout_notes": str, "disclosure": str, "hashtags": str, "required_source": str,
+                   "submit_url": str, "min_len": float, "max_len": float, "disclosure_seconds": float,
+                   "submit_window_min": int}
+
+
+def _campaign_out(c: dict) -> dict:
+    from .campaigns import platforms
+    c = dict(c)
+    c["platforms"] = platforms(c)
+    return c
+
+
+@app.get("/campaigns", response_class=HTMLResponse)
+def campaigns_page(request: Request):
+    rows = [_campaign_out(c) for c in db.q("SELECT * FROM campaigns ORDER BY name")]
+    return page(request, "campaigns.html", campaigns=rows, campaigns_json=json.dumps(rows))
+
+
+@app.post("/api/campaigns")
+async def create_campaign(request: Request):
+    data = body_json(await request.body())
+    if not str(data.get("name", "")).strip():
+        raise HTTPException(400, "Give the campaign a name.")
+    cid = db.insert("campaigns", name=str(data["name"]).strip()[:80])
+    return await _save_campaign(cid, data)
+
+
+@app.put("/api/campaigns/{cid}")
+async def update_campaign(cid: int, request: Request):
+    if not db.get("campaigns", cid):
+        raise HTTPException(404, "No such campaign")
+    return await _save_campaign(cid, body_json(await request.body()))
+
+
+async def _save_campaign(cid: int, data: dict) -> dict:
+    from .campaigns import PLATFORMS
+    vals = {}
+    for k, typ in CAMPAIGN_FIELDS.items():
+        if k in data and data[k] is not None and data[k] != "":
+            try:
+                vals[k] = typ(data[k]) if typ is not str else str(data[k])[:2000]
+            except (TypeError, ValueError) as e:
+                raise HTTPException(400, f"Bad value for {k}") from e
+        elif k in data and typ is not str:
+            vals[k] = 0
+        elif k in data:
+            vals[k] = ""
+    if vals.get("submit_url") and not vals["submit_url"].startswith(("http://", "https://")):
+        raise HTTPException(400, "Submission page must be a http(s) link.")
+    if "platforms" in data:
+        vals["platforms"] = json.dumps([p for p in data["platforms"] if p in PLATFORMS])
+    if vals.get("min_len") and vals.get("max_len") and vals["min_len"] > vals["max_len"]:
+        raise HTTPException(400, "Min length is longer than max length.")
+    db.update("campaigns", cid, **vals)
+    return _campaign_out(db.get("campaigns", cid))
+
+
+@app.delete("/api/campaigns/{cid}")
+def delete_campaign(cid: int):
+    db.ex("DELETE FROM campaigns WHERE id=?", (cid,))
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------- posting + submissions
+@app.post("/api/clips/{clip_id}/posted")
+async def mark_posted(clip_id: int, request: Request):
+    from .campaigns import clip_warnings
+    from .pipeline import publish_clip
+    c = db.get("clips", clip_id)
+    if not c:
+        raise HTTPException(404, "No such clip")
+    data = body_json(await request.body())
+    platform = str(data.get("platform", "")).lower()
+    url = str(data.get("url", "")).strip()
+    if platform not in ("youtube", "tiktok", "instagram", "x"):
+        raise HTTPException(400, "Pick a platform.")
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(400, "Paste the link to your post (starting with https://).")
+    now = db.now()
+    db.insert("posts", clip_id=clip_id, platform=platform, url=url, posted_at=now, submitted=0)
+    db.update("clips", clip_id, status="posted", posted_url=url, posted_at=now, submitted=0)
+    publish_clip(clip_id)
+    out = _clip_out(db.get("clips", clip_id))
+    out["warnings"] = clip_warnings(db.get("clips", clip_id), platform=platform)
+    return out
+
+
+@app.patch("/api/posts/{post_id}")
+async def patch_post(post_id: int, request: Request):
+    p = db.get("posts", post_id)
+    if not p:
+        raise HTTPException(404, "No such post")
+    data = body_json(await request.body())
+    sub = 1 if data.get("submitted") else 0
+    db.update("posts", post_id, submitted=sub, submitted_at=db.now() if sub else None)
+    pending = db.q1("SELECT COUNT(*) n FROM posts WHERE clip_id=? AND submitted=0", (p["clip_id"],))["n"]
+    db.update("clips", p["clip_id"], submitted=1 if pending == 0 else 0)
+    return db.get("posts", post_id)
+
+
+@app.delete("/api/posts/{post_id}")
+def delete_post(post_id: int):
+    db.ex("DELETE FROM posts WHERE id=?", (post_id,))
+    return {"ok": True}
+
+
+@app.get("/submissions", response_class=HTMLResponse)
+def submissions_page(request: Request):
+    rows = db.q("""SELECT p.*, c.title, c.campaign_id, c.thumb_path, cp.name AS campaign, cp.submit_window_min,
+                   cp.submit_url FROM posts p JOIN clips c ON c.id = p.clip_id
+                   LEFT JOIN campaigns cp ON cp.id = c.campaign_id ORDER BY p.posted_at DESC LIMIT 500""")
+    return page(request, "submissions.html", rows=rows, rows_json=json.dumps(rows, default=str))
