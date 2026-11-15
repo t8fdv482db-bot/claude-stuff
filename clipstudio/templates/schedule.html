@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Schedule · Clip Studio{% endblock %}
+{% block mainclass %}wide{% endblock %}
+{% block content %}
+<div class="row">
+  <h1>YouTube schedule</h1><span class="spacer"></span>
+  <a class="btn" href="/schedule?week={{ cal.offset - 1 }}">← Previous week</a>
+  <a class="btn" href="/schedule">This week</a>
+  <a class="btn" href="/schedule?week={{ cal.offset + 1 }}">Next week →</a>
+</div>
+<p class="muted small">Times in {{ cal.tz }}. Slots and timezone are set in <a href="/settings#youtube">Settings</a>. Approve clips on the Review page, then press “Schedule approved”.</p>
+{% if not yt.connected %}
+<div class="banner info">YouTube isn't connected yet — set it up in <a href="/settings#youtube">Settings → YouTube</a>.</div>
+{% endif %}
+<div class="banner info">Heads up: until Google verifies your API project, YouTube forces every upload from it to stay <b>private</b> — scheduled clips won't go public by themselves. Request verification (“audit”) in Google Cloud Console, or publish them by hand in YouTube Studio.</div>
+{% if cal.retry %}<div class="warnings" style="margin-bottom:12px">⏳ {{ cal.retry|length }} clip(s) waiting for tomorrow's YouTube quota: {{ cal.retry[0].yt_error }}</div>{% endif %}
+<div class="cal">
+  {% for d in cal.days %}
+  <div class="day {{ 'today' if d.today }}">
+    <h4>{{ d.label }}</h4>
+    {% for it in d['items'] %}
+      <a class="ev {{ 'uploaded' if it.youtube_id else ('retry' if it.yt_state in ['retry','error'] else '') }}" href="/review?clip={{ it.id }}" style="display:block;color:inherit">
+        <b>{{ it.local }}</b> {{ (it.title or 'clip')[:48] }}
+        <div class="muted">{{ 'scheduled ✓' if it.youtube_id else (it.yt_state or '') }}</div>
+      </a>
+    {% endfor %}
+    {% for f in d.free %}<div class="ev free">{{ f }} · free</div>{% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

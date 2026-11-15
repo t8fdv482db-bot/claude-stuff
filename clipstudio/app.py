@@ -643,3 +643,90 @@ def submissions_page(request: Request):
                    cp.submit_url FROM posts p JOIN clips c ON c.id = p.clip_id
                    LEFT JOIN campaigns cp ON cp.id = c.campaign_id ORDER BY p.posted_at DESC LIMIT 500""")
     return page(request, "submissions.html", rows=rows, rows_json=json.dumps(rows, default=str))
+
+
+# ---------------------------------------------------------------- export + YouTube
+@app.get("/api/clips/{clip_id}/download")
+def download_clip(clip_id: int):
+    from fastapi.responses import FileResponse
+    from .publish import slug
+    c = db.get("clips", clip_id)
+    if not c or not c.get("video_path") or not Path(c["video_path"]).exists():
+        raise HTTPException(404, "This clip isn't rendered yet.")
+    return FileResponse(c["video_path"], media_type="video/mp4", filename=f"{clip_id:04d}_{slug(c.get('title'))}.mp4")
+
+
+@app.get("/api/clips/{clip_id}/caption.txt")
+def download_caption(clip_id: int):
+    from .publish import caption_text, slug
+    c = db.get("clips", clip_id)
+    if not c:
+        raise HTTPException(404, "No such clip")
+    return PlainTextResponse(caption_text(c), headers={
+        "Content-Disposition": f'attachment; filename="{clip_id:04d}_{slug(c.get("title"))}.txt"'})
+
+
+@app.get("/api/export/approved.zip")
+async def export_approved():
+    from fastapi.responses import FileResponse
+    from starlette.background import BackgroundTask
+    from .publish import export_zip
+    ids = [r["id"] for r in db.q("SELECT id FROM clips WHERE status='approved' AND render_state='ready' ORDER BY id")]
+    if not ids:
+        raise HTTPException(404, "No approved clips to export yet.")
+    path = await asyncio.to_thread(export_zip, ids)
+    import time as _t
+    return FileResponse(path, media_type="application/zip", filename=f"clipstudio_approved_{_t.strftime('%Y%m%d_%H%M')}.zip",
+                        background=BackgroundTask(lambda: path.unlink(missing_ok=True)))
+
+
+@app.get("/api/youtube/status")
+def yt_status():
+    from . import publish
+    return publish.status()
+
+
+@app.post("/api/youtube/client-secret")
+async def yt_secret(request: Request):
+    from . import publish
+    form = await request.form()
+    f = form.get("file")
+    if f is None or not hasattr(f, "read"):
+        raise HTTPException(400, "Choose your client_secret.json file.")
+    try:
+        publish.save_client_secret(await f.read())
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return publish.status()
+
+
+@app.post("/api/youtube/connect")
+def yt_connect():
+    from . import publish
+    try:
+        publish.connect_async()
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return {"ok": True, "message": "A Google sign-in page is opening in your browser…"}
+
+
+@app.post("/api/youtube/disconnect")
+def yt_disconnect():
+    from . import publish
+    publish.disconnect()
+    return publish.status()
+
+
+@app.post("/api/youtube/schedule-approved")
+async def yt_schedule():
+    from . import publish
+    try:
+        return await asyncio.to_thread(publish.schedule_approved)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(400, f"Couldn't schedule: {type(e).__name__}: {str(e)[:200]}") from e
+
+
+@app.get("/schedule", response_class=HTMLResponse)
+def schedule_page(request: Request, week: int = 0):
+    from . import publish
+    return page(request, "schedule.html", cal=publish.week(week), yt=publish.status())
