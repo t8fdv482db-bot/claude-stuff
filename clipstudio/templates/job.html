@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Job #{{ job.id }} · Clip Studio{% endblock %}
+{% block content %}
+<p><a href="/">← Jobs</a></p>
+<div class="card">
+  <div class="job-head">
+    <span class="badge {{ 'live' if job.is_live }}">{{ job.platform|capitalize }} · {{ 'LIVE' if job.is_live else 'VOD' }}</span>
+    <h1 class="job-title" id="j-title">{{ job.title or job.url }}</h1>
+    <span class="status s-{{ job.status }}" id="j-status">{{ job.status }}</span>
+  </div>
+  <p class="muted small"><a href="{{ job.url }}" target="_blank" rel="noopener">{{ job.url }}</a> · stage <b id="j-stage">{{ job.stage }}</b> · <span id="j-progress">{{ job.progress|round|int }}</span>%
+    · AI tokens <span id="j-tokens">{{ job.ai_input_tokens }} in / {{ job.ai_output_tokens }} out</span> · cost $<span id="j-cost">{{ '%.3f'|format(job.ai_cost or 0) }}</span></p>
+  <div class="bar"><div id="j-bar" style="width:{{ job.progress }}%"></div></div>
+  <p id="j-error" class="err">{{ job.error or '' }}</p>
+  <div class="row">
+    <a class="btn" href="/review?job={{ job.id }}">Review clips</a>
+    {% if job.is_live %}<button id="stop">Stop watching</button>{% endif %}
+    <button id="cancel" class="danger">Cancel</button>
+  </div>
+</div>
+
+{% if job.is_live %}
+<h2>Live hype score</h2>
+<canvas id="chart" class="chart" width="1100" height="220"></canvas>
+<p class="muted small">Line = combined hype score per second (last 2 hours). Dashed line = clip threshold. Pink markers = clips made.</p>
+{% endif %}
+
+<h2>Log</h2>
+<pre class="log" id="log"></pre>
+{% endblock %}
+{% block scripts %}
+<script>window.JOB_ID = {{ job.id }};</script>
+<script src="/static/job.js"></script>
+{% endblock %}

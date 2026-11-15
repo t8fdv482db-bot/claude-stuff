@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Clip Studio{% endblock %}</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23ff3d6e'/><path d='M12 9l12 7-12 7z' fill='white'/></svg>">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/"><span class="logo">▶</span> Clip Studio</a>
+  <nav>
+    <a href="/" class="{{ 'on' if nav == 'home' or nav == 'job' }}">Jobs</a>
+    <a href="/review" class="{{ 'on' if nav == 'review' }}">Review <span id="pending-badge" class="pill hidden"></span></a>
+    <a href="/streamers" class="{{ 'on' if nav.startswith('streamer') }}">Streamers</a>
+    <a href="/campaigns" class="{{ 'on' if nav == 'campaigns' }}">Campaigns</a>
+    <a href="/submissions" class="{{ 'on' if nav == 'submissions' }}">Submissions</a>
+    <a href="/schedule" class="{{ 'on' if nav == 'schedule' }}">Schedule</a>
+    <a href="/settings" class="{{ 'on' if nav == 'settings' }}">Settings</a>
+  </nav>
+</header>
+{% if not ffmpeg_ok %}
+<div class="banner error">⚠ {{ ffmpeg_msg }}</div>
+{% endif %}
+<main class="{% block mainclass %}{% endblock %}">
+{% block content %}{% endblock %}
+</main>
+<div id="toasts"></div>
+<script src="/static/app.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

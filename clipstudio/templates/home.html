@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}New job · Clip Studio{% endblock %}
+{% block content %}
+<section class="card newjob">
+  <h1>Turn a stream into Shorts</h1>
+  <p class="muted">Paste YouTube, Twitch or Kick links — videos, VODs or live channels. One per line; each line becomes a job.</p>
+  <textarea id="urls" rows="4" placeholder="https://www.twitch.tv/videos/123456789&#10;https://www.youtube.com/watch?v=…&#10;https://kick.com/channel"></textarea>
+  <div id="badges" class="badges"></div>
+
+  <div class="opts">
+    <label>Streamer
+      <select id="opt-streamer">
+        <option value="">— none —</option>
+        {% for s in streamers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+        <option value="__new">+ New…</option>
+      </select>
+    </label>
+    <label>Clips <input id="opt-count" type="number" min="1" max="40" value="{{ settings.clip_count }}"></label>
+    <label>Min s <input id="opt-min" type="number" min="5" max="180" value="{{ settings.min_len }}"></label>
+    <label>Max s <input id="opt-max" type="number" min="10" max="180" value="{{ settings.max_len }}"></label>
+    <label>Layout
+      <select id="opt-layout">
+        <option value="">Streamer default</option>
+        <option value="split">Split (facecam + gameplay)</option>
+        <option value="blur">Blur</option>
+        <option value="center">Center crop</option>
+      </select>
+    </label>
+    <label>Campaign
+      <select id="opt-campaign">
+        <option value="">None</option>
+        {% for c in campaigns %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="toggle"><input id="opt-ai" type="checkbox" {{ 'checked' if settings.ai_enabled }}> AI review</label>
+  </div>
+  <div class="row">
+    <button id="go" class="primary big">Find clips</button>
+    <span id="go-msg" class="muted"></span>
+  </div>
+</section>
+
+<section>
+  <h2>Jobs</h2>
+  <div id="jobs" class="jobs"><p class="muted">No jobs yet.</p></div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/home.js"></script>{% endblock %}
