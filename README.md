@@ -324,6 +324,9 @@ clipstudio/
   db.py           SQLite (plain sqlite3)
   templates/ static/   server-rendered HTML, vanilla JS, one CSS file — no build step
 tests/
+run.bat           Windows launcher
+run.sh            macOS / Linux launcher
+requirements.txt
 ```
 
 Run the tests (needs ffmpeg): `pip install pytest && python -m pytest tests`.
@@ -335,3 +338,10 @@ Design notes: the server binds to 127.0.0.1 only; every external command is an a
 (no shell strings); ffmpeg renders run with the clip folder as working directory and a relative
 `captions.ass` (avoids Windows drive-letter escaping); every long step caches to disk so restarts
 resume; API keys and OAuth tokens are never logged.
+
+Launchers: `run.bat` (Windows) and `run.sh` (macOS/Linux) do the same steps. They find Python 3.11+
+(`py -3` or `python` on Windows), stop with an install hint if Python or ffmpeg is missing, create
+`.venv` on first run, install `requirements.txt` (again whenever it changes on macOS/Linux; on
+Windows delete `.venv\.installed` to force a reinstall), upgrade `yt-dlp` on every later start,
+then run `python -m clipstudio` and pass any arguments through (e.g. `run.bat --port 9000`).
+`run.bat` is stored with CRLF line endings (enforced by `.gitattributes`) so `cmd.exe` parses it correctly.
