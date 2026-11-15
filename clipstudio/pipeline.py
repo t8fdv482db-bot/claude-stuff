@@ -342,7 +342,14 @@ def render_all(ctx: JobContext, ids: list[int]) -> None:
 def analyze(ctx: JobContext, *, url: str, platform: str, cache: Path, duration: float,
             extra: dict | None = None, label: str = "", chat_thread: threading.Thread | None = None,
             chat_path: Path | None = None, clip_times: list[tuple[float, float]] | None = None,
-            count: int | None = None) -> list[int]:
+            count: int | None = None, audio_extra: dict | None = None, t_offset: float = 0.0,
+            chat_wait_max: float | None = None) -> list[int]:
+    """Analyse one source and make clips.
+
+    `audio_extra` are yt-dlp options for the audio download only (e.g. a time range); when the
+    downloaded audio starts at `t_offset` seconds into the source, every time is shifted back to
+    source time before clips are created.
+    """
     job = ctx.job
     opts = resolve_options(job)
     count = count or opts["clip_count"]
@@ -360,8 +367,8 @@ def analyze(ctx: JobContext, *, url: str, platform: str, cache: Path, duration: 
         audio = Path(url)
     else:
         audio = common.download_audio(url, cache, platform, log=ctx.log, cancel=ctx.cancel,
-                                      progress=ctx.progress, extra=extra)
-    if not duration:
+                                      progress=ctx.progress, extra={**(extra or {}), **(audio_extra or {})})
+    if not duration or t_offset:
         duration = media.duration(audio)
     n = int(math.ceil(duration))
     ctx.log(f"Audio ready ({fmt_time(duration)}). Measuring loudness…")
@@ -372,12 +379,20 @@ def analyze(ctx: JobContext, *, url: str, platform: str, cache: Path, duration: 
     if chat_thread is not None:
         if chat_thread.is_alive():
             ctx.log("Waiting for the chat replay download to finish…")
-        while chat_thread.is_alive():
+        waited = 0.0
+        while chat_thread.is_alive() and (chat_wait_max is None or waited < chat_wait_max):
             ctx.check()
             chat_thread.join(1)
+            waited += 1
+        if chat_thread.is_alive():
+            ctx.log("Chat replay is still downloading — scoring with the chat saved so far.")
     if chat_path is not None:
         chat = chatmod.load(chat_path)
+        if t_offset:
+            chat = [{"t": m["t"] - t_offset, "m": m["m"]} for m in chat if m["t"] >= t_offset]
         ctx.log(f"Chat: {len(chat)} messages.")
+    if clip_times and t_offset:
+        clip_times = [(t - t_offset, w) for t, w in clip_times if t >= t_offset]
 
     ctx.stage("transcribing")
     s = db.all_settings()
@@ -404,6 +419,12 @@ def analyze(ctx: JobContext, *, url: str, platform: str, cache: Path, duration: 
         raise UserError("No hype moments found — the video may be silent or too short.")
     chosen = choose(ctx, cands, count=count, opts=opts, words=words, segments=segments, chat=chat,
                     streamer=streamer, n=n)
+    if t_offset:
+        for c in chosen:
+            c["start"] += t_offset
+            c["end"] += t_offset
+            c["peak"] += t_offset
+        words = [{**w, "s": w["s"] + t_offset, "e": w["e"] + t_offset} for w in words]
     ctx.log("Chosen: " + ", ".join(f"{fmt_time(c['start'])}–{fmt_time(c['end'])}" for c in chosen))
     ids = create_clips(ctx, chosen, job=ctx.job, opts=opts, source_url=url, source_extra=extra, words=words)
     marker.write_text(json.dumps(ids))

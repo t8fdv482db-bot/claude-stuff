@@ -497,3 +497,9 @@ def _parse_time(s: str) -> float:
     except ValueError as e:
         raise HTTPException(400, "Timestamp should look like 1:23:45 or 125") from e
     return total
+
+
+@app.get("/api/jobs/{job_id}/live-scores")
+def live_scores(job_id: int):
+    from .live import scores_for
+    return scores_for(job_id)

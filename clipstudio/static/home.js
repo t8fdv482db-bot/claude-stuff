@@ -79,7 +79,10 @@
     return CS.fmtDur(end - j.started);
   }
   function stageChips(j) {
-    if (j.is_live && (j.status === "watching" || j.stage === "watching")) return `<span class="chip on live">● watching live</span>`;
+    if (j.is_live && j.status === "watching") {
+      const catchup = j.stage && j.stage !== "watching" && j.stage !== "done" ? `<span class="chip on">catch-up: ${j.stage}</span>` : "";
+      return `<span class="chip on live">● watching live</span>${catchup}`;
+    }
     const idx = STAGES.indexOf(j.stage);
     return STAGES.map((s, i) => `<span class="chip ${i < idx || j.status === "done" ? "done" : ""} ${i === idx && j.status === "running" ? "on" : ""}">${s}</span>`).join("<span class='arrow'>›</span>");
   }
