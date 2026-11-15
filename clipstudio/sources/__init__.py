@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 YT = re.compile(r"(?:^|//)(?:www\.|m\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)/", re.I)
 TW = re.compile(r"(?:^|//)(?:www\.|m\.)?twitch\.tv/", re.I)
@@ -18,13 +19,31 @@ class Detected:
 
     @property
     def badge(self) -> str:
-        names = {"youtube": "YouTube", "twitch": "Twitch", "kick": "Kick"}
+        names = {"youtube": "YouTube", "twitch": "Twitch", "kick": "Kick", "file": "Local file"}
         k = {"vod": "VOD", "live": "LIVE", "maybe-live": "LIVE?"}[self.kind]
         return f"{names.get(self.platform, 'Unknown')} · {k}"
 
 
+def local_path(url: str) -> Path | None:
+    u = url.strip().strip('"')
+    if u.lower().startswith("file://"):
+        from urllib.parse import unquote, urlparse
+        p = urlparse(u)
+        u = unquote(p.path)
+        if re.match(r"^/[A-Za-z]:/", u):   # file:///C:/...
+            u = u[1:]
+    try:
+        p = Path(u).expanduser()
+        return p if p.is_file() else None
+    except (OSError, ValueError):
+        return None
+
+
 def detect(url: str) -> Detected:
     """Fast, offline guess from the URL alone (the worker confirms live status with yt-dlp)."""
+    lp = local_path(url)
+    if lp is not None:
+        return Detected(str(lp.resolve()), "file", "vod")
     u = url.strip()
     if u and not re.match(r"^https?://", u, re.I):
         u = "https://" + u

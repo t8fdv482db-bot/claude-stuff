@@ -87,6 +87,9 @@ async def api_probe(url: str):
     """Slower, accurate live/VOD check through yt-dlp (used to update the badge)."""
     from .sources.common import metadata
     d = detect(url)
+    if d.platform == "file":
+        return {"ok": True, "platform": "file", "kind": "vod", "title": Path(d.url).name, "channel": "",
+                "duration": 0, "badge": "Local file · VOD"}
     try:
         meta = await asyncio.to_thread(metadata, d.url, d.platform)
     except Exception as e:  # noqa: BLE001
@@ -113,7 +116,7 @@ async def create_jobs(request: Request):
     for url in lines:
         d = detect(url)
         if d.platform == "unknown":
-            raise HTTPException(400, f"Not a YouTube, Twitch or Kick link: {url}")
+            raise HTTPException(400, f"Not a YouTube, Twitch or Kick link (or a video file on this PC): {url}")
         jid = db.insert("jobs", url=d.url, platform=d.platform, is_live=1 if d.kind == "live" else 0,
                         streamer_id=opts.get("streamer_id"), campaign_id=opts.get("campaign_id"),
                         options=json.dumps(opts), status="queued", stage="queued", created=db.now())

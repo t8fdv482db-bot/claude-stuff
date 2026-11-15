@@ -10,7 +10,8 @@
   function quickDetect(url) {
     const u = url.toLowerCase();
     let platform = "unknown", kind = "VOD";
-    if (/twitch\.tv/.test(u)) { platform = "Twitch"; kind = /\/videos?\/\d+|\/clip\/|clips\.twitch/.test(u) ? "VOD" : "LIVE"; }
+    if (/^(file:\/\/|\/|~\/|[a-z]:[\\/])/.test(u)) platform = "Local file";
+    else if (/twitch\.tv/.test(u)) { platform = "Twitch"; kind = /\/videos?\/\d+|\/clip\/|clips\.twitch/.test(u) ? "VOD" : "LIVE"; }
     else if (/kick\.com/.test(u)) { platform = "Kick"; kind = /\/video\/|\/videos\/|\/clips?\//.test(u) ? "VOD" : "LIVE"; }
     else if (/youtube\.com|youtu\.be/.test(u)) { platform = "YouTube"; kind = /\/live(\/|$)/.test(u) ? "LIVE?" : "VOD"; }
     return { platform, kind };
@@ -30,7 +31,7 @@
     probeTimer = setTimeout(() => lines.forEach(probe), 700);
   }
   async function probe(url) {
-    if (probeCache.has(url) || quickDetect(url).platform === "unknown") return;
+    if (probeCache.has(url) || ["unknown", "Local file"].includes(quickDetect(url).platform)) return;
     probeCache.set(url, null);
     try { probeCache.set(url, await CS.api("GET", "/api/probe?url=" + encodeURIComponent(url))); }
     catch (e) { probeCache.set(url, { ok: false }); }

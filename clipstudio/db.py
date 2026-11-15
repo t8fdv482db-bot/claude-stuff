@@ -103,6 +103,7 @@ CREATE TABLE IF NOT EXISTS clips (
   youtube_id TEXT, publish_at TEXT, yt_state TEXT, yt_error TEXT, yt_retry_after REAL,
   posted_url TEXT, posted_at REAL, submitted INTEGER DEFAULT 0,
   signals TEXT DEFAULT '{}',
+  source_url TEXT, source_extra TEXT DEFAULT '{}',
   created REAL
 );
 CREATE TABLE IF NOT EXISTS posts (
@@ -124,8 +125,21 @@ def conn() -> sqlite3.Connection:
             _conn.row_factory = sqlite3.Row
             _conn.execute("PRAGMA journal_mode=WAL")
             _conn.executescript(SCHEMA)
+            _migrate(_conn)
             _seed(_conn)
         return _conn
+
+
+MIGRATIONS = [  # (table, column, type) added after the first release
+    ("clips", "source_url", "TEXT"), ("clips", "source_extra", "TEXT DEFAULT '{}'"),
+]
+
+
+def _migrate(c: sqlite3.Connection) -> None:
+    for table, col, typ in MIGRATIONS:
+        cols = {r[1] for r in c.execute(f"PRAGMA table_info({table})")}
+        if col not in cols:
+            c.execute(f'ALTER TABLE {table} ADD COLUMN "{col}" {typ}')
 
 
 def _seed(c: sqlite3.Connection) -> None:

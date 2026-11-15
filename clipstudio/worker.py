@@ -25,6 +25,10 @@ STAGE_SPAN = {  # overall-progress range per stage
 }
 
 
+class Relaunch(Exception):
+    """Raised by the VOD pipeline when a link turns out to be live: re-run it as a live job."""
+
+
 # ---------------------------------------------------------------- events (SSE)
 class EventBus:
     def __init__(self) -> None:
@@ -167,6 +171,7 @@ class Manager:
             self.pool.submit(self._run, ctx, False)
 
     def _run(self, ctx: JobContext, live: bool) -> None:
+        relaunch = False
         try:
             if ctx.cancel.is_set():
                 raise Cancelled()
@@ -176,6 +181,8 @@ class Manager:
             runner(ctx)
             ctx.set(status="done", stage="done", progress=100, finished=db.now())
             ctx.log("Finished.")
+        except Relaunch:
+            relaunch = True
         except Cancelled:
             ctx.set(status="cancelled", finished=db.now())
             ctx.log("Cancelled.")
@@ -188,6 +195,8 @@ class Manager:
         finally:
             with self.lock:
                 self.contexts.pop(ctx.job_id, None)
+        if relaunch:
+            self.submit(ctx.job_id)
 
     def cancel(self, job_id: int) -> bool:
         with self.lock:
