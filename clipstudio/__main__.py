@@ -25,6 +25,7 @@ def main() -> None:
         print("\n  !! " + ffmpeg_missing_message() + "\n  (Clip Studio will start, but can't make clips until ffmpeg is installed.)\n")
 
     url = f"http://127.0.0.1:{args.port}"
+    os.environ["CLIPSTUDIO_PORT"] = str(args.port)   # used for links in Discord notifications
     if not _free(args.port):
         print(f"Clip Studio already seems to be running at {url}")
         if not args.no_browser:

@@ -730,3 +730,87 @@ async def yt_schedule():
 def schedule_page(request: Request, week: int = 0):
     from . import publish
     return page(request, "schedule.html", cal=publish.week(week), yt=publish.status())
+
+
+# ---------------------------------------------------------------- settings
+@app.get("/settings", response_class=HTMLResponse)
+def settings_page(request: Request):
+    import os
+    from zoneinfo import available_timezones
+    from . import publish
+    s = db.all_settings()
+    s.pop("anthropic_api_key", None)                 # never sent to the browser
+    return page(request, "settings.html", s=s, s_json=json.dumps(s),
+                key_set=bool(db.setting("anthropic_api_key")), env_key=bool(os.environ.get("ANTHROPIC_API_KEY")),
+                timezones=sorted(available_timezones()), yt=publish.status(),
+                storage=str(db.storage_dir()), home=str(db.home()))
+
+
+@app.post("/api/settings")
+async def save_settings(request: Request):
+    data = body_json(await request.body())
+    for k, v in data.items():
+        if k not in db.DEFAULTS:
+            continue
+        default = db.DEFAULTS[k]
+        if k == "anthropic_api_key":
+            v = str(v or "").strip()
+            if v == "" and not data.get("clear_api_key"):
+                continue                               # empty box = keep the saved key
+        elif k == "timezone":
+            from zoneinfo import ZoneInfo
+            try:
+                ZoneInfo(str(v))
+            except Exception as e:  # noqa: BLE001
+                raise HTTPException(400, f"Unknown timezone: {v}") from e
+        elif k == "yt_slots":
+            from .publish import parse_slots
+            if v and not parse_slots(str(v)):
+                raise HTTPException(400, "Slots should look like 11:00, 15:00, 19:00")
+        elif k == "storage_dir" and v:
+            p = Path(str(v)).expanduser()
+            try:
+                p.mkdir(parents=True, exist_ok=True)
+            except OSError as e:
+                raise HTTPException(400, f"Can't use that folder: {e}") from e
+        if isinstance(default, bool):
+            v = bool(v)
+        elif isinstance(default, int):
+            try:
+                v = int(float(v))
+            except (TypeError, ValueError) as e:
+                raise HTTPException(400, f"{k} must be a number") from e
+        elif isinstance(default, float):
+            try:
+                v = float(v)
+            except (TypeError, ValueError) as e:
+                raise HTTPException(400, f"{k} must be a number") from e
+        else:
+            v = str(v)
+        db.set_setting(k, v)
+    if data.get("clear_api_key"):
+        db.set_setting("anthropic_api_key", "")
+    return {"ok": True}
+
+
+@app.post("/api/settings/test-discord")
+def test_discord():
+    import urllib.request
+    url = (db.setting("discord_webhook") or "").strip()
+    if not url.startswith("https://"):
+        raise HTTPException(400, "Save a Discord webhook URL first.")
+    req = urllib.request.Request(url, data=json.dumps({"content": "✅ Clip Studio test — new clips will show up here."}).encode(),
+                                 headers={"Content-Type": "application/json", "User-Agent": "ClipStudio"})
+    try:
+        urllib.request.urlopen(req, timeout=10).read()
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(400, f"Discord didn't accept it: {str(e)[:150]}") from e
+    return {"ok": True}
+
+
+@app.get("/api/storage")
+async def storage_usage():
+    def size() -> int:
+        return sum(p.stat().st_size for p in db.storage_dir().rglob("*") if p.is_file())
+    used = await asyncio.to_thread(size)
+    return {"used_gb": round(used / 1024 ** 3, 2), "limit_gb": db.setting("max_disk_gb"), "path": str(db.storage_dir())}

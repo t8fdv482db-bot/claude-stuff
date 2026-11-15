@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Settings · Clip Studio{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+<p class="muted">Changes are saved when you press <b>Save</b> at the bottom.</p>
+
+<h2>Clips</h2>
+<div class="card form-grid">
+  <label>Clips per job <input data-k="clip_count" type="number" min="1" max="40"></label>
+  <label>Min length (s) <input data-k="min_len" type="number" min="5"></label>
+  <label>Max length (s) <input data-k="max_len" type="number" min="10"></label>
+  <label>Default layout <select data-k="default_layout"><option value="split">Split</option><option value="blur">Blur</option><option value="center">Center crop</option></select></label>
+</div>
+
+<h2>Scoring</h2>
+<div class="card">
+  <div class="form-grid">
+    <label>Chat weight <input data-k="w_chat" type="number" step="0.1" min="0"></label>
+    <label>Audio weight <input data-k="w_audio" type="number" step="0.1" min="0"></label>
+    <label>Transcript weight <input data-k="w_transcript" type="number" step="0.1" min="0"></label>
+    <label>Viewer-clips weight (Twitch) <input data-k="w_clips" type="number" step="0.1" min="0"></label>
+  </div>
+  <label style="display:flex;margin-top:12px">Chat hype tokens (comma separated) <input data-k="hype_tokens" style="width:100%"></label>
+</div>
+
+<h2>Transcription (Whisper)</h2>
+<div class="card form-grid">
+  <label>Model <select data-k="whisper_model">
+    <option value="tiny.en">tiny.en — fastest</option><option value="base.en">base.en — fast</option>
+    <option value="small.en">small.en — balanced (default)</option><option value="medium.en">medium.en — accurate, slow on CPU</option>
+    <option value="large-v3">large-v3 — best, needs a GPU</option></select></label>
+  <label>Device <select data-k="whisper_device"><option value="auto">Auto (NVIDIA GPU if available)</option><option value="cuda">GPU (CUDA)</option><option value="cpu">CPU</option></select></label>
+  <label>Transcribe <select data-k="transcribe_mode"><option value="smart">Smart — on long videos only around likely moments (fast)</option><option value="full">Full — everything</option></select></label>
+</div>
+
+<h2>AI review (Claude)</h2>
+<div class="card">
+  <div class="form-grid">
+    <label class="toggle"><input data-k="ai_enabled" type="checkbox"> Use AI review by default</label>
+    <label>Anthropic API key
+      <input id="api-key" type="password" autocomplete="off" placeholder="{{ '•••••••• saved — type to replace' if key_set else 'sk-ant-…' }}"></label>
+    <label>Model <input data-k="ai_model" list="models"><datalist id="models"><option value="claude-sonnet-5-5"><option value="claude-opus-5-5"><option value="claude-haiku-5-5"></datalist></label>
+    <label>Drop clips the AI scores below <input data-k="ai_min_score" type="number" min="1" max="10"></label>
+  </div>
+  <p class="muted small">{% if env_key %}Using the ANTHROPIC_API_KEY environment variable.{% endif %} The key is stored only on this computer and never written to logs.
+  Rough cost with Sonnet: ~$0.005 per candidate clip. {% if key_set %}<button class="small ghost" id="clear-key">Remove saved key</button>{% endif %}</p>
+</div>
+
+<h2>Captions</h2>
+<div class="card form-grid">
+  <label>Font <input data-k="caption_font" placeholder="Arial"></label>
+  <label>Size <input data-k="caption_size" type="number" min="30" max="160"></label>
+  <label>Text color <input data-k="caption_color" type="color"></label>
+  <label>Highlight color <input data-k="caption_highlight" type="color"></label>
+  <label>Words per line <input data-k="caption_words" type="number" min="1" max="4"></label>
+</div>
+
+<h2 id="youtube">YouTube</h2>
+<div class="card">
+  <p id="yt-status">{% if yt.connected %}<span class="ok">✔ Connected{% if yt.channel %} to <b>{{ yt.channel }}</b>{% endif %}</span>{% elif yt.has_secret %}<span class="warn">client_secret.json uploaded — now press Connect.</span>{% else %}<span class="muted">Not set up.</span>{% endif %}
+    {% if yt.error %}<span class="err">{{ yt.error }}</span>{% endif %}</p>
+  <div class="row">
+    <label class="btn" style="flex-direction:row">1. Upload client_secret.json<input id="yt-secret" type="file" accept=".json,application/json" class="hidden"></label>
+    <button id="yt-connect">2. Connect YouTube account</button>
+    {% if yt.connected %}<button id="yt-disconnect" class="ghost">Disconnect</button>{% endif %}
+  </div>
+  <div class="form-grid" style="margin-top:12px">
+    <label>Upload slots (your timezone) <input data-k="yt_slots" placeholder="11:00, 15:00, 19:00, 22:00"></label>
+    <label>Timezone <input data-k="timezone" list="tzs"><datalist id="tzs">{% for tz in timezones %}<option value="{{ tz }}">{% endfor %}</datalist></label>
+  </div>
+  <p class="muted small">Clips upload as <b>private</b> with a scheduled publish time and <code>#shorts</code>. Note: Google only lets <b>unverified</b> API projects upload private videos —
+    they stay private even after the scheduled time until your project passes Google's audit. See the README for the step-by-step setup.</p>
+</div>
+
+<h2>Live mode</h2>
+<div class="card form-grid">
+  <label>Clip threshold (hype score) <input data-k="live_threshold" type="number" step="0.1" min="0.5"></label>
+  <label>Reaction tail to wait for (s) <input data-k="live_tail" type="number" min="3" max="60"></label>
+  <label>Keep recorded footage (minutes) <input data-k="live_keep_minutes" type="number" min="15"></label>
+  <label>Catch-up: last N hours <input data-k="live_catchup_hours" type="number" step="0.5" min="0.5"></label>
+</div>
+
+<h2>Notifications</h2>
+<div class="card">
+  <div class="row"><label style="flex:1;display:flex">Discord webhook URL (optional) <input data-k="discord_webhook" placeholder="https://discord.com/api/webhooks/…" style="width:100%"></label>
+  <button id="test-discord" style="align-self:flex-end">Send test</button></div>
+</div>
+
+<h2>Storage</h2>
+<div class="card">
+  <div class="form-grid">
+    <label>Storage folder (empty = default) <input data-k="storage_dir" placeholder="{{ home }}/media"></label>
+    <label>Max disk use (GB) <input data-k="max_disk_gb" type="number" min="1"></label>
+    <label>Refuse videos longer than (hours) <input data-k="max_video_hours" type="number" min="1"></label>
+    <label>Jobs running at once <input data-k="max_parallel_jobs" type="number" min="1" max="6"></label>
+    <label class="toggle"><input data-k="keep_source" type="checkbox"> Keep source files (audio/full video)</label>
+  </div>
+  <p class="muted small">Using <code>{{ storage }}</code> · <span id="usage">checking disk use…</span>. When over the limit, the oldest <i>source</i> files are deleted automatically — rendered clips are never deleted.</p>
+</div>
+
+<div class="row" style="margin:20px 0 40px"><button id="save" class="primary big">Save settings</button></div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const S = {{ s_json|safe }};
+  const $ = (id) => document.getElementById(id);
+  document.querySelectorAll("[data-k]").forEach((el) => {
+    const v = S[el.dataset.k];
+    if (el.type === "checkbox") el.checked = !!v; else el.value = v ?? "";
+  });
+  $("save").onclick = async () => {
+    const body = {};
+    document.querySelectorAll("[data-k]").forEach((el) => (body[el.dataset.k] = el.type === "checkbox" ? el.checked : el.value));
+    if ($("api-key").value.trim()) body.anthropic_api_key = $("api-key").value.trim();
+    try { await CS.api("POST", "/api/settings", body); $("api-key").value = ""; CS.toast("Settings saved", "ok"); }
+    catch (e) { CS.toast(e.message, "error"); }
+  };
+  $("clear-key")?.addEventListener("click", async () => { await CS.api("POST", "/api/settings", { clear_api_key: true }); location.reload(); });
+  $("test-discord").onclick = async () => {
+    try { await CS.api("POST", "/api/settings", { discord_webhook: document.querySelector("[data-k=discord_webhook]").value }); await CS.api("POST", "/api/settings/test-discord"); CS.toast("Sent — check Discord", "ok"); }
+    catch (e) { CS.toast(e.message, "error"); }
+  };
+  $("yt-secret").onchange = async () => {
+    const fd = new FormData(); fd.append("file", $("yt-secret").files[0]);
+    try { await CS.api("POST", "/api/youtube/client-secret", fd); CS.toast("client_secret.json saved — now press Connect", "ok"); setTimeout(() => location.reload(), 800); }
+    catch (e) { CS.toast(e.message, "error", 8000); }
+  };
+  $("yt-connect").onclick = async () => {
+    try {
+      const r = await CS.api("POST", "/api/youtube/connect"); CS.toast(r.message, "ok", 8000);
+      const poll = setInterval(async () => {
+        const s = await CS.api("GET", "/api/youtube/status");
+        if (!s.connecting) { clearInterval(poll); s.error ? CS.toast(s.error, "error", 9000) : location.reload(); }
+      }, 2000);
+    } catch (e) { CS.toast(e.message, "error", 8000); }
+  };
+  $("yt-disconnect")?.addEventListener("click", async () => { await CS.api("POST", "/api/youtube/disconnect"); location.reload(); });
+  CS.api("GET", "/api/storage").then((d) => ($("usage").textContent = `${d.used_gb} GB used of ${d.limit_gb} GB`)).catch(() => {});
+})();
+</script>
+{% endblock %}

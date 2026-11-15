@@ -137,3 +137,4 @@ canvas.chart { width: 100%; height: 220px; background: #090b10; border: 1px soli
 .cal .ev.retry { border-left: 3px solid var(--warn); }
 dialog { color: var(--text); max-width: 520px; width: 92vw; }
 dialog::backdrop { background: #000b; }
+input[type=color] { height: 38px; padding: 3px; cursor: pointer; }
