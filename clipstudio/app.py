@@ -503,3 +503,28 @@ def _parse_time(s: str) -> float:
 def live_scores(job_id: int):
     from .live import scores_for
     return scores_for(job_id)
+
+
+@app.post("/api/clips/{clip_id}/regen-title")
+async def regen_title(clip_id: int):
+    from . import ai
+    from .pipeline import clip_dir, publish_clip
+    c = db.get("clips", clip_id)
+    if not c:
+        raise HTTPException(404, "No such clip")
+    if not ai.api_key():
+        raise HTTPException(400, "Add your Anthropic API key in Settings → AI first.")
+    f = clip_dir(clip_id) / "words.json"
+    words = json.loads(f.read_text("utf-8"))["words"] if f.exists() else []
+    s = db.get("streamers", c["streamer_id"]) if c.get("streamer_id") else None
+    try:
+        res = await asyncio.to_thread(ai.regenerate_title, c, words, (s or {}).get("name", ""))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"AI request failed: {type(e).__name__}: {str(e)[:200]}") from e
+    old_title = c.get("title") or ""
+    vals = {"title": res["title"]}
+    if old_title and old_title in (c.get("description") or ""):
+        vals["description"] = c["description"].replace(old_title, res["title"], 1)
+    db.update("clips", clip_id, **vals)
+    publish_clip(clip_id)
+    return _clip_out(db.get("clips", clip_id))
