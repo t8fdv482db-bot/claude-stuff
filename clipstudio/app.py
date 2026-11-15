@@ -222,3 +222,130 @@ async def _http_error(request: Request, exc: HTTPException):
 def clip_counts():
     rows = db.q("SELECT status, COUNT(*) n FROM clips GROUP BY status")
     return {r["status"]: r["n"] for r in rows}
+
+
+# ---------------------------------------------------------------- review
+def _clip_out(c: dict) -> dict:
+    from .campaigns import clip_warnings
+    from .pipeline import public_clip
+    d = public_clip(c)
+    d["warnings"] = clip_warnings(c)
+    if c.get("campaign_id"):
+        camp = db.get("campaigns", c["campaign_id"])
+        if camp:
+            d["campaign"] = {"id": camp["id"], "name": camp["name"], "submit_url": camp["submit_url"],
+                             "submit_window_min": camp["submit_window_min"]}
+    d["posts"] = db.q("SELECT * FROM posts WHERE clip_id=? ORDER BY id", (c["id"],))
+    return d
+
+
+@app.get("/review", response_class=HTMLResponse)
+def review_page(request: Request):
+    return page(request, "review.html",
+                streamers=db.q("SELECT id, name FROM streamers ORDER BY name"),
+                jobs=db.q("SELECT id, title, url FROM jobs WHERE id IN (SELECT DISTINCT job_id FROM clips) ORDER BY id DESC LIMIT 100"))
+
+
+@app.get("/api/clips")
+def list_clips(status: str | None = None, streamer_id: int | None = None, job_id: int | None = None,
+               clip_id: int | None = None):
+    where, args = [], []
+    if status:
+        where.append("status=?"); args.append(status)
+    if streamer_id:
+        where.append("streamer_id=?"); args.append(streamer_id)
+    if job_id:
+        where.append("job_id=?"); args.append(job_id)
+    if clip_id:
+        where.append("id=?"); args.append(clip_id)
+    sql = "SELECT * FROM clips" + (" WHERE " + " AND ".join(where) if where else "") + " ORDER BY id DESC LIMIT 500"
+    return {"clips": [_clip_out(c) for c in db.q(sql, args)]}
+
+
+@app.get("/api/clips/{clip_id}")
+def get_clip(clip_id: int):
+    c = db.get("clips", clip_id)
+    if not c:
+        raise HTTPException(404, "No such clip")
+    return _clip_out(c)
+
+
+def _rerender(clip_id: int) -> None:
+    from .pipeline import publish_clip, render_clip
+    db.update("clips", clip_id, render_state="queued")
+    publish_clip(clip_id)
+    manager.render(lambda: render_clip(clip_id))
+
+
+@app.patch("/api/clips/{clip_id}")
+async def patch_clip(clip_id: int, request: Request):
+    c = db.get("clips", clip_id)
+    if not c:
+        raise HTTPException(404, "No such clip")
+    data = body_json(await request.body())
+    vals = {}
+    for k in ("title", "description", "hook", "layout"):
+        if k in data and data[k] is not None:
+            vals[k] = str(data[k])[:5000]
+    if "title" in vals:
+        vals["title"] = vals["title"][:100]
+    if "status" in data:
+        if data["status"] not in ("pending", "approved", "rejected", "posted"):
+            raise HTTPException(400, "Bad status")
+        vals["status"] = data["status"]
+    db.update("clips", clip_id, **vals)
+    if ("hook" in vals and vals["hook"] != (c.get("hook") or "")) or ("layout" in vals and vals["layout"] != c.get("layout")):
+        _rerender(clip_id)
+    from .pipeline import publish_clip
+    publish_clip(clip_id)
+    return _clip_out(db.get("clips", clip_id))
+
+
+@app.post("/api/clips/{clip_id}/trim")
+async def trim_clip(clip_id: int, request: Request):
+    c = db.get("clips", clip_id)
+    if not c:
+        raise HTTPException(404, "No such clip")
+    data = body_json(await request.body())
+    start = float(c["start"]) + float(data.get("start_delta", 0))
+    end = float(c["end"]) + float(data.get("end_delta", 0))
+    job = db.get("jobs", c["job_id"]) or {}
+    dur = job.get("duration") or 0
+    start = max(0.0, start)
+    if dur and not job.get("is_live"):
+        end = min(float(dur), end)
+    if end - start < 5:
+        raise HTTPException(400, "A clip can't be shorter than 5 seconds.")
+    if end - start > 180:
+        raise HTTPException(400, "A clip can't be longer than 3 minutes.")
+    db.update("clips", clip_id, start=round(start, 2), end=round(end, 2))
+    _rerender(clip_id)
+    return _clip_out(db.get("clips", clip_id))
+
+
+@app.post("/api/clips/{clip_id}/rerender")
+def rerender_clip(clip_id: int):
+    if not db.get("clips", clip_id):
+        raise HTTPException(404, "No such clip")
+    _rerender(clip_id)
+    return {"ok": True}
+
+
+@app.delete("/api/clips/{clip_id}")
+def delete_clip(clip_id: int):
+    import shutil
+    from .pipeline import clip_dir
+    db.ex("DELETE FROM clips WHERE id=?", (clip_id,))
+    db.ex("DELETE FROM posts WHERE clip_id=?", (clip_id,))
+    shutil.rmtree(clip_dir(clip_id), ignore_errors=True)
+    return {"ok": True}
+
+
+@app.get("/media/clip/{clip_id}/{kind}")
+def clip_media(clip_id: int, kind: str):
+    from fastapi.responses import FileResponse
+    c = db.get("clips", clip_id)
+    col = {"video": "video_path", "thumb": "thumb_path", "gif": "gif_path"}.get(kind)
+    if not c or not col or not c.get(col) or not Path(c[col]).exists():
+        raise HTTPException(404, "Not rendered yet")
+    return FileResponse(c[col], headers={"Cache-Control": "max-age=3600"})

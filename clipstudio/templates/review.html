@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Review · Clip Studio{% endblock %}
+{% block mainclass %}wide{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div class="tabs" id="tabs">
+    <button data-status="pending" class="on">Pending <span class="muted" data-count="pending"></span></button>
+    <button data-status="approved">Approved <span class="muted" data-count="approved"></span></button>
+    <button data-status="rejected">Rejected <span class="muted" data-count="rejected"></span></button>
+    <button data-status="posted">Posted <span class="muted" data-count="posted"></span></button>
+    <button data-status="">All</button>
+  </div>
+  <select id="f-streamer"><option value="">All streamers</option>{% for s in streamers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select>
+  <select id="f-job"><option value="">All jobs</option>{% for j in jobs %}<option value="{{ j.id }}">#{{ j.id }} {{ (j.title or j.url)[:60] }}</option>{% endfor %}</select>
+  <span class="spacer"></span>
+  <button id="schedule-approved" title="Upload approved clips to YouTube as private, scheduled into your next free slots">📅 Schedule approved on YouTube</button>
+  <a class="btn" href="/api/export/approved.zip" title="mp4 + caption .txt for every approved clip">⬇ Export all approved (.zip)</a>
+</div>
+<p class="muted small">Keys: <b>A</b> approve · <b>R</b> reject · <b>J</b>/<b>K</b> next/previous · <b>Space</b> play/pause. Trimming re-renders in the background.</p>
+<div id="grid" class="grid"></div>
+<p id="empty" class="muted hidden">Nothing here yet.</p>
+
+<dialog id="post-dlg" class="card">
+  <h3>Mark as posted</h3>
+  <p class="muted small">Paste the link to your post. If this clip belongs to a campaign, the submit countdown starts now.</p>
+  <div class="form-grid">
+    <label>Platform <select id="post-platform"><option value="tiktok">TikTok</option><option value="youtube">YouTube</option><option value="instagram">Instagram</option><option value="x">X</option></select></label>
+    <label>Post URL <input id="post-url" type="url" placeholder="https://…"></label>
+  </div>
+  <div class="row" style="margin-top:12px"><button id="post-save" class="primary">Save</button><button id="post-cancel">Cancel</button></div>
+</dialog>
+{% endblock %}
+{% block scripts %}<script src="/static/review.js"></script>{% endblock %}

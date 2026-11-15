@@ -84,7 +84,7 @@
     return STAGES.map((s, i) => `<span class="chip ${i < idx || j.status === "done" ? "done" : ""} ${i === idx && j.status === "running" ? "on" : ""}">${s}</span>`).join("<span class='arrow'>›</span>");
   }
   function jobHtml(j) {
-    const plat = { youtube: "YouTube", twitch: "Twitch", kick: "Kick" }[j.platform] || j.platform;
+    const plat = { youtube: "YouTube", twitch: "Twitch", kick: "Kick", file: "Local file" }[j.platform] || j.platform;
     const running = ["queued", "running", "watching"].includes(j.status);
     return `
       <div class="job-head">
