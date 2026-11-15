@@ -164,7 +164,13 @@ def retry_job(job_id: int):
     job = db.get("jobs", job_id)
     if not job:
         raise HTTPException(404, "No such job")
-    db.update("jobs", job_id, status="queued", stage="queued", progress=0, error=None)
+    if job["status"] in ("done", "cancelled"):
+        # Re-run = choose clips again with the current settings (downloads/transcripts stay cached).
+        # After an error we keep the markers so the job resumes where it stopped.
+        d = db.storage_dir() / "jobs" / str(job_id)
+        for marker in list(d.glob("selected*.json")) + [d / "meta.json"]:
+            marker.unlink(missing_ok=True)
+    db.update("jobs", job_id, status="queued", stage="queued", progress=0, error=None, finished=None)
     bus.publish("job", public_job(db.get("jobs", job_id)))
     manager.submit(job_id)
     return {"ok": True}
