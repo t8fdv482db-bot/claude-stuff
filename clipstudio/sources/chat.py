@@ -39,7 +39,8 @@ def replay(url: str, out: Path, *, cancel: threading.Event | None = None,
     last_pub = 0.0
     try:
         chat = ChatDownloader().get_chat(url, start_time=start or None, message_types=["text_message"],
-                                         chat_type="live", inactivity_timeout=120)
+                                         chat_type="live", inactivity_timeout=120,
+                                         interruptible_retry=False, max_attempts=5)
         with open(out, "a", encoding="utf-8") as fh:
             for msg in chat:
                 if cancel is not None and cancel.is_set():
@@ -67,7 +68,8 @@ def live_messages(url: str, stop: threading.Event) -> Iterator[tuple[float, str]
     """Yield (wall_clock_time, text) for live chat until `stop` is set."""
     from chat_downloader import ChatDownloader
     chat = ChatDownloader().get_chat(url, message_types=["text_message"], chat_type="live",
-                                     message_receive_timeout=0.5, inactivity_timeout=None)
+                                     message_receive_timeout=0.5, inactivity_timeout=None,
+                                     interruptible_retry=False)
     for msg in chat:
         if stop.is_set():
             break

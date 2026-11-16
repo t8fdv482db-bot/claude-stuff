@@ -54,3 +54,10 @@ def test_detect_local_and_urls(tmp_path):
     assert detect("https://www.twitch.tv/videos/2233445566").kind == "vod"
     assert detect("https://kick.com/video/abc-123").kind == "vod"
     assert detect("https://www.youtube.com/@lacy/live").kind == "live"
+
+
+def test_find_ignores_marker_files(tmp_path):
+    from clipstudio.sources.common import _find
+    for n in ("audio.done", "audio.m4a.part", "audio.info.json", "audio.m4a"):
+        (tmp_path / n).write_text("x")
+    assert _find(tmp_path, "audio").name == "audio.m4a"

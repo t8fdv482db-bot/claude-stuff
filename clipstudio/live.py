@@ -44,7 +44,8 @@ def run_catchup(ctx: JobContext, det, meta: dict) -> None:
             start = max(0.0, dur - hours * 3600)
             ctx.log(f"Catch-up: analysing the in-progress VOD from {fmt_time(start)} to {fmt_time(dur)}.")
             chat_path = pipeline.cache_dir("twitch", vmeta["id"] + "_live") / "chat.jsonl"
-            chat_thread = threading.Thread(target=chatmod.replay, args=(vmeta["webpage_url"], chat_path),
+            chat_thread = threading.Thread(target=twitch.chat_replay,
+                                           args=(vmeta["webpage_url"], vmeta["duration"], chat_path),
                                            kwargs={"cancel": ctx.cancel, "log": ctx.log}, daemon=True)
             chat_thread.start()
             clip_times = twitch.viewer_clips(vmeta["webpage_url"], vmeta.get("channel_id"), ctx.log)
@@ -109,7 +110,7 @@ class Recorder:
             src = [sys.executable, "-m", "streamlink", "--stdout", "--loglevel", "error",
                    self.url, "1080p60,1080p,936p60,720p60,720p,best"]
         else:
-            src = [sys.executable, "-m", "yt_dlp", "-q", "--no-warnings", "--no-part",
+            src = [sys.executable, "-m", "yt_dlp", "-q", "--no-warnings", "--no-part", *common.cli_args(),
                    "-f", "best[height<=1080]/best", "-o", "-", self.url]
         mux = ["ffmpeg", "-nostdin", "-v", "error", "-fflags", "+genpts", "-i", "pipe:0", "-map", "0:v:0?",
                "-map", "0:a:0?", "-c", "copy", "-f", "segment", "-segment_time", str(SEGMENT_SECONDS),

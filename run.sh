@@ -41,7 +41,7 @@ if [ ! -f .venv/.installed ] || [ requirements.txt -nt .venv/.installed ]; then
   touch .venv/.installed
 else
   # Sites change often; a fresh yt-dlp keeps downloads working.
-  .venv/bin/python -m pip install -q --upgrade yt-dlp >/dev/null 2>&1 || true
+  .venv/bin/python -m pip install -q --upgrade "yt-dlp[default]" deno >/dev/null 2>&1 || true
 fi
 
 exec .venv/bin/python -m clipstudio "$@"

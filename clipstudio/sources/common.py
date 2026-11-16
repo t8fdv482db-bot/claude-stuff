@@ -31,6 +31,39 @@ class _Log:
             self.log("yt-dlp: " + msg[:300])
 
 
+def js_runtime() -> str | None:
+    """Path to deno (installed into the venv by requirements.txt). New yt-dlp needs it for YouTube."""
+    import shutil
+    import sys
+    try:
+        import deno
+        p = deno.find_deno_bin()
+        if p and Path(p).exists():
+            return str(p)
+    except Exception:  # noqa: BLE001
+        pass
+    for cand in (Path(sys.executable).parent / "deno", Path(sys.executable).parent / "deno.exe"):
+        if cand.exists():
+            return str(cand)
+    return shutil.which("deno")
+
+
+def cookie_browser() -> str:
+    from .. import db
+    return (db.setting("yt_cookies_browser") or "").strip().lower()
+
+
+def cli_args() -> list[str]:
+    """The same extras for the yt-dlp command line (live recorder)."""
+    out = []
+    js = js_runtime()
+    if js:
+        out += ["--js-runtimes", f"deno:{js}"]
+    if cookie_browser():
+        out += ["--cookies-from-browser", cookie_browser()]
+    return out
+
+
 def _opts(log=None, cancel: threading.Event | None = None,
           progress: Callable[[float], None] | None = None, **extra) -> dict:
     def hook(d: dict) -> None:
@@ -46,6 +79,11 @@ def _opts(log=None, cancel: threading.Event | None = None,
     o = {"quiet": True, "no_warnings": False, "noprogress": True, "logger": _Log(log),
          "progress_hooks": [hook], "retries": 5, "fragment_retries": 10,
          "concurrent_fragment_downloads": 4, "noplaylist": True}
+    js = js_runtime()
+    if js:
+        o["js_runtimes"] = {"deno": {"path": js}}
+    if cookie_browser():
+        o["cookiesfrombrowser"] = (cookie_browser(),)
     o.update(extra)
     return o
 
@@ -61,6 +99,9 @@ def friendly(err: Exception, platform: str, what: str = "video") -> UserError:
         return UserError(f"This {name} channel isn't live right now.")
     if "unsupported url" in low:
         return UserError(f"That link doesn't look like a {name} video, VOD or channel.")
+    if "confirm you" in low and "not a bot" in low:
+        return UserError(f"{name} asked for a bot check. In Settings → Downloads pick the browser you're "
+                         "logged into YouTube with (Chrome/Firefox/Edge…) so Clip Studio can use its cookies.")
     if "403" in low or "forbidden" in low or "unable to download" in low or "not found" in low or "404" in low:
         return UserError(f"This {name} {what} isn't reachable (it may be deleted, region-locked or blocked). "
                          f"Details: {msg[:200]}")
@@ -102,9 +143,13 @@ def metadata(url: str, platform: str, log=None) -> dict:
     }
 
 
+MEDIA_EXT = {".m4a", ".mp4", ".webm", ".opus", ".ogg", ".mp3", ".aac", ".ts", ".mkv", ".mov", ".flv", ".wav"}
+
+
 def _find(out_dir: Path, stem: str) -> Path | None:
+    """The downloaded media file for `stem` (never .part/.done/.json side files)."""
     for p in sorted(out_dir.glob(stem + ".*")):
-        if p.suffix not in (".part", ".ytdl", ".json") and not p.name.endswith(".part"):
+        if p.suffix.lower() in MEDIA_EXT and p.stem == stem:
             return p
     return None
 

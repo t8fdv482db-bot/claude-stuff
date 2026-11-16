@@ -217,6 +217,7 @@ DEFAULTS: dict[str, Any] = {
     "live_tail": 10,
     "live_keep_minutes": 120,
     "max_parallel_jobs": 2,
+    "yt_cookies_browser": "",
 }
 
 SECRET_KEYS = {"anthropic_api_key"}

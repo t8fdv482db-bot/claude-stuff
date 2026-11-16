@@ -5,6 +5,7 @@ import json
 import math
 import re
 import urllib.request
+from pathlib import Path
 from typing import Callable
 
 from .common import extract_info
@@ -70,4 +71,109 @@ def viewer_clips(vod_url: str, channel_login: str | None,
         out.append((t, 1.0 + math.log10(1 + (n.get("viewCount") or 0))))
     if log:
         log(f"Found {len(out)} viewer clips on this VOD.")
+    return out
+
+
+# ---------------------------------------------------------------- chat replay
+_COMMENTS_Q = """query($id:ID!,$off:Int){video(id:$id){comments(contentOffsetSeconds:$off){
+  edges{node{id contentOffsetSeconds message{fragments{text}}}}}}}"""
+
+
+def _comments_at(vid: str, off: int) -> list[dict]:
+    for attempt in range(4):
+        try:
+            data = _gql(_COMMENTS_Q, {"id": vid, "off": int(off)})
+            edges = ((((data.get("data") or {}).get("video") or {}).get("comments") or {}).get("edges")) or []
+            return [e["node"] for e in edges if e.get("node")]
+        except Exception:  # noqa: BLE001
+            if attempt == 3:
+                raise
+            import time
+            time.sleep(1 + attempt * 2)
+    return []
+
+
+def _fetch_range(vid: str, a: int, b: int, out: Path, cancel=None, tick=None) -> None:
+    """All comments with a <= t < b, paging by time offset (cursor paging needs a browser token)."""
+    done = out.with_suffix(".done")
+    if done.exists():
+        return
+    seen: set[str] = set()
+    rows: list[dict] = []
+    off = a
+    while off < b:
+        if cancel is not None and cancel.is_set():
+            return
+        nodes = _comments_at(vid, off)
+        if not nodes:
+            break
+        last = off
+        for n in nodes:
+            t = n.get("contentOffsetSeconds")
+            if t is None or n.get("id") in seen:
+                continue
+            seen.add(n["id"])
+            last = max(last, int(t))
+            if a <= t < b:
+                text = "".join(f.get("text") or "" for f in ((n.get("message") or {}).get("fragments") or []))
+                rows.append({"t": float(t), "m": text[:200]})
+        off = last if last > off else off + 1     # same second again (de-duplicated), or move on
+        if tick:
+            tick(off - a)
+    with open(out, "w", encoding="utf-8") as fh:
+        for r in rows:
+            fh.write(json.dumps(r, ensure_ascii=False) + "\n")
+    done.write_text(str(len(rows)))
+
+
+def chat_replay(vod_url: str, duration: float, out: Path, *, cancel=None, log=None, workers: int = 8) -> Path:
+    """Download a Twitch VOD's chat replay in parallel time ranges. Resumable; writes chat.jsonl."""
+    from concurrent.futures import ThreadPoolExecutor
+    done = out.with_suffix(".done")
+    if done.exists():
+        return out
+    vid = vod_id(vod_url)
+    if not vid or not duration:
+        if log:
+            log("Chat replay skipped (unknown VOD id or length).")
+        return out
+    parts_dir = out.parent / "chat_parts"
+    parts_dir.mkdir(exist_ok=True)
+    step = max(60, int(math.ceil(duration / (workers * 4))))
+    ranges = [(a, min(int(duration) + 1, a + step)) for a in range(0, int(duration) + 1, step)]
+    progress = [0] * len(ranges)
+    import threading
+    import time
+    lock = threading.Lock()
+    last_log = [time.time()]
+
+    def work(i: int) -> None:
+        a, b = ranges[i]
+
+        def tick(n: int) -> None:
+            with lock:
+                progress[i] = n
+                if log and time.time() - last_log[0] > 20:
+                    last_log[0] = time.time()
+                    log(f"Chat replay: {100 * sum(progress) / max(1, duration):.0f}%")
+        _fetch_range(vid, a, b, parts_dir / f"p{a:07d}.jsonl", cancel, tick)
+
+    try:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            list(pool.map(work, range(len(ranges))))
+    except Exception as e:  # noqa: BLE001
+        if log:
+            log(f"Chat replay unavailable ({type(e).__name__}: {str(e)[:120]}). Continuing without chat.")
+        return out
+    if cancel is not None and cancel.is_set():
+        return out
+    n = 0
+    with open(out, "w", encoding="utf-8") as fh:
+        for p in sorted(parts_dir.glob("p*.jsonl")):
+            for line in p.read_text("utf-8").splitlines():
+                fh.write(line + "\n")
+                n += 1
+    done.write_text(str(n))
+    if log:
+        log(f"Chat replay saved: {n} messages.")
     return out

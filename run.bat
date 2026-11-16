@@ -40,7 +40,7 @@ if not exist ".venv\.installed" (
   echo ok> ".venv\.installed"
 ) else (
   rem Sites change often; a fresh yt-dlp keeps downloads working.
-  ".venv\Scripts\python.exe" -m pip install -q --upgrade yt-dlp >nul 2>&1
+  ".venv\Scripts\python.exe" -m pip install -q --upgrade "yt-dlp[default]" deno >nul 2>&1
 )
 
 ".venv\Scripts\python.exe" -m clipstudio %*

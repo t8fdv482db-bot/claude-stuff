@@ -31,6 +31,19 @@ def pick_device(pref: str = "auto") -> tuple[str, str]:
     return "cpu", "int8"
 
 
+def _is_download_error(e: Exception) -> bool:
+    low = str(e).lower()
+    return any(k in low for k in ("request", "connect", "download", "huggingface", "hf.co", "timed out", "cas client"))
+
+
+def _download_error(name: str, e: Exception) -> Exception:
+    from .media import UserError
+    if _is_download_error(e):
+        return UserError(f"Couldn't download the speech-to-text model (Whisper '{name}', one-time ~0.5 GB). "
+                         f"Check your internet connection or firewall, then press Re-run. Details: {str(e)[:160]}")
+    return e
+
+
 def model(log: Callable[[str], None] | None = None):
     global _model, _model_key
     name = db.setting("whisper_model") or "small.en"
@@ -44,8 +57,8 @@ def model(log: Callable[[str], None] | None = None):
             try:
                 _model = WhisperModel(name, device=device, compute_type=ctype)
             except Exception as e:  # noqa: BLE001 - e.g. CUDA present but cuDNN missing
-                if device == "cpu":
-                    raise
+                if device == "cpu" or _is_download_error(e):
+                    raise _download_error(name, e) from e
                 if log:
                     log(f"GPU Whisper failed ({str(e)[:120]}); falling back to CPU.")
                 _model = WhisperModel(name, device="cpu", compute_type="int8")

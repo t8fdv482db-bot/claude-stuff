@@ -474,9 +474,14 @@ def run_vod(ctx: JobContext) -> None:
         ctx.log("Kick has no chat replay — scoring uses audio + transcript only.")
     else:
         chat_path = cache / "chat.jsonl"
-        chat_thread = threading.Thread(target=chatmod.replay, args=(meta["webpage_url"], chat_path),
-                                       kwargs={"cancel": ctx.cancel, "log": ctx.log, "duration": meta["duration"]},
-                                       daemon=True)
+        if det.platform == "twitch":
+            chat_thread = threading.Thread(target=twitch.chat_replay,
+                                           args=(meta["webpage_url"], meta["duration"], chat_path),
+                                           kwargs={"cancel": ctx.cancel, "log": ctx.log}, daemon=True)
+        else:
+            chat_thread = threading.Thread(target=chatmod.replay, args=(meta["webpage_url"], chat_path),
+                                           kwargs={"cancel": ctx.cancel, "log": ctx.log, "duration": meta["duration"]},
+                                           daemon=True)
         chat_thread.start()
     clip_times = None
     if det.platform == "twitch":
