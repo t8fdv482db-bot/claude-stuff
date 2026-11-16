@@ -292,6 +292,8 @@ submitted, press **Submitted ✔**. The **Submissions** page lists every post wi
 | *This Kick VOD isn't reachable* / *isn't reachable* | The video was deleted, is region-locked, or the site blocked the request. Try again later or check the link in your browser. |
 | *… isn't live right now* | You pasted a channel link while they're offline. Paste a VOD link instead. |
 | *private or subscriber-only* | Clip Studio can only download public videos. |
+| YouTube: *asked for a bot check* / *confirm you're not a bot* | Settings → Downloads → pick the browser you're logged into YouTube with. Clip Studio then uses that browser's cookies (they stay on your computer). |
+| Kick: *live chat is unavailable* | Kick changes its chat service from time to time. Live Kick clips are then scored on audio + speech only — they still work. |
 | Downloads suddenly fail for every link | Restart Clip Studio with run.bat / run.sh – it updates the downloader on start. |
 | A clip says *Render failed* | Press **Retry** on the card; the job **Log** shows details. |
 | Captions look like a different font | The font in Settings must be installed on your computer (Arial is safe). |

@@ -51,3 +51,14 @@ def test_window_snaps_to_sentences_and_respects_limits():
     assert s == 0 and e - s >= 20
     s, e = scoring.make_window(295, 300, min_len=20, max_len=60)
     assert e == 300 and e - s >= 20
+
+
+def test_windows_without_speech_are_demoted():
+    n = 1000
+    loud = np.full(n, -30.0)
+    loud[200:203] += 30          # loudest spike, but nobody talks (intro music)
+    loud[600:603] += 20          # smaller spike with speech
+    words = [{"s": t, "e": t + 0.4, "w": "word"} for t in np.arange(560, 640, 0.5)]
+    sig = scoring.Signals(n=n, audio={"loud": loud, "jump": np.zeros(n), "burst": np.zeros(n)})
+    m = scoring.find_moments(sig, {"audio": 1}, 1, words=words)
+    assert abs(m[0]["peak"] - 601) <= 5 and m[0]["speech"] > 0.9

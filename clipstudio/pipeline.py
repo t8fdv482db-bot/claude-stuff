@@ -211,6 +211,16 @@ def create_clips(ctx: JobContext, chosen: list[dict], *, job: dict, opts: dict, 
 
 
 # ---------------------------------------------------------------- sources for clips
+_full_locks: dict[str, threading.Lock] = {}
+_full_locks_guard = threading.Lock()
+
+
+def _full_lock(d: Path) -> threading.Lock:
+    """One full-video download per folder, even when several clips fall back at once."""
+    with _full_locks_guard:
+        return _full_locks.setdefault(str(d), threading.Lock())
+
+
 def ensure_source(clip: dict, log=None, cancel=None) -> tuple[Path, float]:
     """Make sure footage covering the clip exists locally; returns (path, offset of its t=0)."""
     start, end = float(clip["start"]), float(clip["end"])
@@ -236,21 +246,35 @@ def ensure_source(clip: dict, log=None, cancel=None) -> tuple[Path, float]:
         path = common.cut_local(Path(url), a, b, out.with_suffix(".mp4"), cancel=cancel)
         db.update("clips", clip["id"], src_path=str(path), src_offset=a, src_end=a + media.duration(path))
         return path, a
-    try:
-        path = common.download_section(url, a, b, out, platform, log=log, cancel=cancel, extra=extra)
-        got = media.duration(path)
-        off = a
-        if got and abs(got - (b - a)) > 1.5:   # cut snapped to an earlier keyframe: trust the end
-            off = max(0.0, b - got)
-    except Cancelled:
-        raise
-    except Exception as e:  # noqa: BLE001 - fall back to the full video
-        if log:
-            log(f"Section download failed ({str(e)[:160]}); downloading the full video instead.")
-        meta_dir = job_dir.parent
-        full = common.download_full(url, meta_dir, platform, log=log, cancel=cancel, extra=extra)
-        path = common.cut_local(full, a, b, out.with_suffix(".mp4"), cancel=cancel)
-        off = a
+    path, off = None, a
+    if platform in ("twitch", "kick") or ".m3u8" in url:
+        try:   # fastest + most reliable: fetch just the HLS segments ourselves
+            got = common.download_section_hls(url, a, b, out, log=log, cancel=cancel, extra=extra)
+            if got:
+                path, off = got
+        except Cancelled:
+            raise
+        except Exception as e:  # noqa: BLE001
+            if log:
+                log(f"Direct segment download failed ({str(e)[:160]}); trying yt-dlp.")
+    if path is None:
+        try:
+            path = common.download_section(url, a, b, out, platform, log=log, cancel=cancel, extra=extra)
+            got_len = media.duration(path)
+            if not got_len:
+                raise RuntimeError("section download produced an empty file")
+            if abs(got_len - (b - a)) > 1.5:   # cut snapped to an earlier keyframe: trust the end
+                off = max(0.0, b - got_len)
+        except Cancelled:
+            raise
+        except Exception as e:  # noqa: BLE001 - fall back to the full video (once per job)
+            if log:
+                log(f"Section download failed ({str(e)[:160]}); downloading the full video instead.")
+            meta_dir = job_dir.parent
+            with _full_lock(meta_dir):
+                full = common.download_full(url, meta_dir, platform, log=log, cancel=cancel, extra=extra)
+            path = common.cut_local(full, a, b, out.with_suffix(".mp4"), cancel=cancel)
+            off = a
     db.update("clips", clip["id"], src_path=str(path), src_offset=off, src_end=off + media.duration(path))
     return path, off
 
@@ -365,6 +389,9 @@ def analyze(ctx: JobContext, *, url: str, platform: str, cache: Path, duration: 
     ctx.stage("downloading", "Downloading audio only (fast path) so analysis can start right away…")
     if platform == "file":
         audio = Path(url)
+    elif t_offset and platform in ("twitch", "kick") and (cache / "audio.done").exists() is False and _hls_range_audio(
+            ctx, url, cache, t_offset, t_offset + (duration or 0)):
+        audio = common._find(cache, "audio")
     else:
         audio = common.download_audio(url, cache, platform, log=ctx.log, cancel=ctx.cancel,
                                       progress=ctx.progress, extra={**(extra or {}), **(audio_extra or {})})
@@ -439,15 +466,48 @@ def analyze(ctx: JobContext, *, url: str, platform: str, cache: Path, duration: 
     return ids
 
 
+def _hls_range_audio(ctx: JobContext, url: str, cache: Path, a: float, b: float) -> bool:
+    """Catch-up fast path: fetch just the audio segments for [a, b] straight from the HLS playlist."""
+    if b <= a:
+        return False
+    try:
+        got = common.download_section_hls(url, a, b, cache / "audio", log=ctx.log, cancel=ctx.cancel,
+                                          audio=True, progress=ctx.progress)
+    except Cancelled:
+        raise
+    except Exception as e:  # noqa: BLE001
+        ctx.log(f"Direct audio download failed ({str(e)[:150]}); trying yt-dlp.")
+        return False
+    if not got:
+        return False
+    (cache / "audio.done").write_text("ok")
+    return True
+
+
 def run_vod(ctx: JobContext) -> None:
     job = ctx.job
     det = detect(job["url"])
-    ctx.stage("downloading", f"Fetching info for {job['url']}")
+    if det.platform == "kick":
+        from .sources import kick
+        fixed = kick.normalize_vod_url(det.url)
+        if fixed != det.url:
+            ctx.set(url=fixed)
+            det = detect(fixed)
+    ctx.stage("downloading", f"Fetching info for {det.url}")
     meta = common.info_json(ctx.dir / "meta.json")
     if meta is None and det.platform == "file":
         meta = local_metadata(Path(det.url))
     if meta is None:
-        meta = common.metadata(det.url, det.platform, ctx.log)
+        try:
+            meta = common.metadata(det.url, det.platform, ctx.log)
+        except UserError:
+            if det.platform != "kick":
+                raise
+            from .sources import kick
+            meta = kick.vod_meta(det.url)       # Kick's own API: direct playlist link
+            if meta is None:
+                raise
+            ctx.log("yt-dlp couldn't read this Kick VOD; using Kick's own API instead.")
         common.info_json(ctx.dir / "meta.json", meta)
     if meta["is_live"]:
         ctx.log("This link is live right now — switching to live mode (catch-up + watch).")

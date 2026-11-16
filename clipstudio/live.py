@@ -51,7 +51,7 @@ def run_catchup(ctx: JobContext, det, meta: dict) -> None:
             clip_times = twitch.viewer_clips(vmeta["webpage_url"], vmeta.get("channel_id"), ctx.log)
             pipeline.analyze(ctx, url=vmeta["webpage_url"], platform="twitch",
                              cache=pipeline.cache_dir("twitch", f"{vmeta['id']}_live_{int(start)}"),
-                             duration=0, label="_catchup", chat_thread=chat_thread, chat_path=chat_path,
+                             duration=dur - start, label="_catchup", chat_thread=chat_thread, chat_path=chat_path,
                              clip_times=clip_times, audio_extra=_range(start, dur), t_offset=start,
                              chat_wait_max=120)
         elif det.platform == "youtube":
@@ -75,9 +75,16 @@ def run_catchup(ctx: JobContext, det, meta: dict) -> None:
                 return
             url = entries[0].get("url") or entries[0].get("webpage_url")
             vmeta = common.metadata(url, "kick", ctx.log)
-            start = max(0.0, (vmeta["duration"] or 0) - hours * 3600)
+            if not vmeta["duration"]:              # in-progress VOD: read its length from the playlist
+                vmeta["duration"] = common.hls_duration(vmeta["webpage_url"], ctx.log)
+            if not vmeta["duration"]:
+                ctx.log("Catch-up skipped: couldn't tell how long the Kick stream has been running.")
+                return
+            start = max(0.0, vmeta["duration"] - hours * 3600)
+            ctx.log(f"Catch-up: analysing Kick's in-progress VOD from {fmt_time(start)} to {fmt_time(vmeta['duration'])}.")
             pipeline.analyze(ctx, url=vmeta["webpage_url"], platform="kick",
-                             cache=pipeline.cache_dir("kick", f"{vmeta['id']}_live_{int(start)}"), duration=0,
+                             cache=pipeline.cache_dir("kick", f"{vmeta['id']}_live_{int(start)}"),
+                             duration=(vmeta["duration"] or start) - start,
                              label="_catchup", audio_extra=_range(start, vmeta["duration"] or start + 1),
                              t_offset=start)
         ctx.log("Catch-up done.")
@@ -85,6 +92,9 @@ def run_catchup(ctx: JobContext, det, meta: dict) -> None:
         return
     except Exception as e:  # noqa: BLE001 - catch-up must never kill watch mode
         ctx.log(f"Catch-up failed: {str(e)[:300]}. Watch mode keeps running.")
+    finally:
+        if not ctx.cancel.is_set():
+            ctx.set(stage="watching", progress=0)
 
 
 def _range(a: float, b: float) -> dict:
@@ -200,6 +210,9 @@ class Watcher:
         self.wall0 = time.time()
         self.rec = Recorder(meta["webpage_url"] if det.platform != "twitch" else det.url, self.dir,
                             ctx.log, self.wall0)
+        # streamlink handles Twitch/Kick live HLS itself; yt-dlp is the better first try for YouTube
+        self.rec.use_streamlink = det.platform in ("twitch", "kick")
+        self.tried_both = False
         self.rms = np.zeros(0, dtype=np.float32)       # 10 Hz, session time
         self.words: list[dict] = []
         self.segs_tr: list[dict] = []
@@ -237,6 +250,12 @@ class Watcher:
                 if self.det.platform == "kick" and not got:
                     return   # kick reader logged why; rely on audio + transcript
             except Exception as e:  # noqa: BLE001
+                fails = getattr(self, "chat_fails", 0) + 1
+                self.chat_fails = fails
+                if self.det.platform == "kick" and ("cluster" in str(e) or fails >= 3):
+                    ctx.log("Kick live chat is unavailable right now (Kick changed its chat service). "
+                            "Scoring uses audio + transcript only.")
+                    return
                 ctx.log(f"Live chat dropped ({type(e).__name__}: {str(e)[:100]}); reconnecting in 15 s.")
             ctx.stop.wait(15)
 
@@ -269,9 +288,11 @@ class Watcher:
             raise UserError(f"Couldn't record this live stream (yt-dlp and streamlink both failed): {err[:200]}")
         if self.fails >= 2:
             self.ctx.stop.wait(20)
-        if quick and not self.rec.use_streamlink:
-            self.ctx.log(f"yt-dlp couldn't record ({err[:160] or 'no data'}); trying streamlink.")
-            self.rec.use_streamlink = True
+        if quick and not self.tried_both:
+            self.tried_both = True
+            tool, other = ("streamlink", "yt-dlp") if self.rec.use_streamlink else ("yt-dlp", "streamlink")
+            self.ctx.log(f"{tool} couldn't record ({err[:160] or 'no data'}); trying {other}.")
+            self.rec.use_streamlink = not self.rec.use_streamlink
             self.rec.start()
             return True
         try:

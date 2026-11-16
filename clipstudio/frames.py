@@ -34,7 +34,13 @@ def grab(url: str, t: float, out: Path, log=None) -> Path:
         t = meta["duration"] / 2
     tmp = Path(tempfile.mkdtemp(prefix="cs_frame_"))
     try:
-        sec = common.download_section(d.url, t, t + 2, tmp / "grab", d.platform, log=log)
+        got = None
+        if d.platform in ("twitch", "kick"):
+            try:
+                got = common.download_section_hls(d.url, t, t + 2, tmp / "grab", log=log)
+            except Exception:  # noqa: BLE001 - fall back to yt-dlp below
+                got = None
+        sec = got[0] if got else common.download_section(d.url, t, t + 2, tmp / "grab", d.platform, log=log)
         _frame(sec, 0.2, out)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

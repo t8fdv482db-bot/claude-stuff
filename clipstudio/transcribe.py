@@ -53,7 +53,7 @@ def model(log: Callable[[str], None] | None = None):
         if _model is None or _model_key != key:
             from faster_whisper import WhisperModel
             if log:
-                log(f"Loading Whisper '{name}' on {device.upper()} (first time downloads the model)…")
+                log(f"Loading Whisper '{name}' on {device.upper()} — the first time ever, this downloads it (~0.5 GB)…")
             try:
                 _model = WhisperModel(name, device=device, compute_type=ctype)
             except Exception as e:  # noqa: BLE001 - e.g. CUDA present but cuDNN missing
@@ -67,11 +67,24 @@ def model(log: Callable[[str], None] | None = None):
         return _model
 
 
+def read_wav(path: Path):
+    """16 kHz mono PCM WAV → float32 array. Bypasses faster-whisper's PyAV decoder, whose API
+    changes between PyAV releases."""
+    import wave
+
+    import numpy as np
+    with wave.open(str(path), "rb") as w:
+        if w.getframerate() != 16000 or w.getnchannels() != 1 or w.getsampwidth() != 2:
+            raise ValueError("expected 16 kHz mono 16-bit WAV")
+        raw = w.readframes(w.getnframes())
+    return np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+
+
 def transcribe_wav(wav: Path, offset: float, log=None, cancel: threading.Event | None = None) -> dict:
     m = model(log)
     words, segs = [], []
     with _run_lock:
-        segments, _info = m.transcribe(str(wav), word_timestamps=True, vad_filter=True, beam_size=1,
+        segments, _info = m.transcribe(read_wav(wav), word_timestamps=True, vad_filter=True, beam_size=1,
                                        condition_on_previous_text=False)
         for seg in segments:
             if cancel is not None and cancel.is_set():

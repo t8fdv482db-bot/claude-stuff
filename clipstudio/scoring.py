@@ -260,9 +260,30 @@ def find_moments(sig: Signals, weights: dict[str, float], count: int, *, min_len
         score = combine(sig, weights)
     bounds = sentence_bounds(words or [], segments)
     out = []
-    for p in pick_peaks(score, count, min_gap):
+    # over-pick, then demote windows that are mostly without speech ("starting soon" screens,
+    # music breaks): a Short needs someone talking/reacting to work.
+    for p in pick_peaks(score, count * 2 if words else count, min_gap):
         s, e = make_window(p, sig.n, pre=pre, post=post, min_len=min_len, max_len=max_len,
                            words=words, bounds=bounds)
-        out.append({"peak": float(p), "start": s, "end": e, "score": round(float(score[p]), 3),
-                    "signals": {k: round(float(v[p]), 2) for k, v in sig.z.items()}})
-    return out
+        val = float(score[p])
+        cov = speech_coverage(words, s, e) if words else 1.0
+        if cov < 0.4:
+            val = val * 0.3 if val > 0 else val - 1
+        out.append({"peak": float(p), "start": s, "end": e, "score": round(val, 3),
+                    "signals": {k: round(float(v[p]), 2) for k, v in sig.z.items()},
+                    "speech": round(cov, 2)})
+    out.sort(key=lambda c: c["score"], reverse=True)
+    return out[:count]
+
+
+def speech_coverage(words: list[dict], start: float, end: float) -> float:
+    """Fraction of the window's seconds in which some word is being spoken."""
+    n = max(1, int(round(end - start)))
+    hit = np.zeros(n, dtype=bool)
+    for w in words:
+        if w["e"] <= start or w["s"] >= end:
+            continue
+        a = max(0, int(w["s"] - start))
+        b = min(n, int(np.ceil(w["e"] - start)) + 1)   # a word "covers" the pause right after it
+        hit[a:b] = True
+    return float(hit.mean())

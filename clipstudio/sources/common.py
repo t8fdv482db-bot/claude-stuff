@@ -238,7 +238,7 @@ def download_full(url: str, out_dir: Path, platform: str, *, log=None, cancel=No
 
 def cut_local(src: Path, start: float, end: float, dst: Path, cancel=None) -> Path:
     """Frame-accurate cut from a local file (used when section download isn't possible)."""
-    run(["ffmpeg", "-nostdin", "-y", "-v", "error", "-ss", f"{max(0, start):.3f}", "-i", src,
+    run(["ffmpeg", "-nostdin", "-y", "-v", "error", "-fflags", "+genpts", "-ss", f"{max(0, start):.3f}", "-i", src,
          "-t", f"{end - max(0, start):.3f}", "-map", "0:v:0", "-map", "0:a:0?",
          "-c:v", "libx264", "-preset", "ultrafast", "-crf", "16", "-c:a", "aac", "-b:a", "192k", dst],
         cancel=cancel)
@@ -250,3 +250,112 @@ def info_json(path: Path, data: Any | None = None) -> Any:
         return json.loads(path.read_text("utf-8")) if path.exists() else None
     path.write_text(json.dumps(data), "utf-8")
     return data
+
+
+# ---------------------------------------------------------------- native HLS sections
+def _http_get(url: str, headers: dict | None = None, timeout: float = 30) -> bytes:
+    import urllib.request
+    last: Exception | None = None
+    for attempt in range(4):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", **(headers or {})})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read()
+        except Exception as e:  # noqa: BLE001
+            last = e
+            import time
+            time.sleep(1 + attempt)
+    raise RuntimeError(f"download failed: {last}")
+
+
+def hls_info(url: str, log=None, extra: dict | None = None, audio: bool = False) -> dict | None:
+    """The muxed (or audio-only) HLS media playlist for a video, or None if it isn't plain HLS."""
+    fmt = ("ba[protocol^=m3u8]/worst[protocol^=m3u8]" if audio
+           else "b[height<=1080][protocol^=m3u8]/b[protocol^=m3u8]")
+    info = extract_info(url, log, format=fmt, **(extra or {}))
+    if not str(info.get("protocol", "")).startswith("m3u8") or not info.get("url"):
+        return None
+    return {"url": info["url"], "headers": info.get("http_headers") or {}}
+
+
+def hls_duration(url: str, log=None, extra: dict | None = None) -> float:
+    """Total length of an HLS VOD playlist in seconds (works for in-progress VODs too)."""
+    from urllib.parse import urljoin
+    h = hls_info(url, log, extra, audio=True) or hls_info(url, log, extra)
+    if not h:
+        return 0.0
+    text = _http_get(h["url"], h["headers"]).decode("utf-8", "replace")
+    if "#EXT-X-STREAM-INF" in text:
+        variants = [ln for ln in text.splitlines() if ln and not ln.startswith("#")]
+        text = _http_get(urljoin(h["url"], variants[-1]), h["headers"]).decode("utf-8", "replace")
+    return sum(float(ln[8:].split(",")[0] or 0) for ln in text.splitlines() if ln.startswith("#EXTINF:"))
+
+
+def download_section_hls(url: str, start: float, end: float, out_path: Path, *, log=None, cancel=None,
+                         extra: dict | None = None, audio: bool = False,
+                         progress=None) -> tuple[Path, float] | None:
+    """Fetch only the HLS segments covering [start, end], join them and cut exactly.
+
+    Returns (file, source time of its first frame), or None when the source isn't simple HLS.
+    With audio=True the result is an audio-only .m4a (for analysis).
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from urllib.parse import urljoin
+    h = hls_info(url, log, extra, audio=audio)
+    if not h:
+        return None
+    text = _http_get(h["url"], h["headers"]).decode("utf-8", "replace")
+    if "#EXT-X-STREAM-INF" in text:            # master playlist: take the last (usually best) variant
+        variants = [ln for ln in text.splitlines() if ln and not ln.startswith("#")]
+        h["url"] = urljoin(h["url"], variants[-1])
+        text = _http_get(h["url"], h["headers"]).decode("utf-8", "replace")
+    if "#EXT-X-KEY" in text and "METHOD=NONE" not in text:
+        return None                              # encrypted: let yt-dlp handle it
+    segs, t, dur, init = [], 0.0, None, None
+    for ln in text.splitlines():
+        ln = ln.strip()
+        if ln.startswith("#EXTINF:"):
+            dur = float(ln[8:].split(",")[0] or 0)
+        elif ln.startswith("#EXT-X-MAP:") and 'URI="' in ln:
+            init = urljoin(h["url"], ln.split('URI="')[1].split('"')[0])
+        elif ln and not ln.startswith("#") and dur is not None:
+            segs.append((t, t + dur, urljoin(h["url"], ln)))
+            t += dur
+            dur = None
+    pick = [s for s in segs if s[1] > start and s[0] < end]
+    if not pick:
+        raise UserError("That part of the video isn't available (past the end of the VOD?).")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out_path.parent / (out_path.stem + ".parts.ts")
+
+    def get(u: str) -> bytes:
+        if cancel is not None and cancel.is_set():
+            raise Cancelled()
+        return _http_get(u, h["headers"])
+
+    done_n = [0]
+
+    def get_counted(u: str) -> bytes:
+        b = get(u)
+        done_n[0] += 1
+        if progress:
+            progress(done_n[0] / len(pick))
+        return b
+
+    with open(tmp, "wb") as fh:          # stream to disk in order (hours of audio don't fit in RAM)
+        if init:
+            fh.write(get(init))
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            for b in pool.map(get_counted, [s[2] for s in pick]):
+                fh.write(b)
+    seg0 = pick[0][0]
+    if audio:
+        final = out_path.with_suffix(".m4a")
+        run(["ffmpeg", "-nostdin", "-y", "-v", "error", "-fflags", "+genpts", "-ss", f"{max(0.0, start - seg0):.3f}",
+             "-i", tmp, "-t", f"{end - start:.3f}", "-vn", "-ac", "1", "-c:a", "aac", "-b:a", "64k", final],
+            cancel=cancel)
+    else:
+        final = out_path.with_suffix(".mp4")
+        cut_local(tmp, start - seg0, end - seg0, final, cancel=cancel)
+    tmp.unlink(missing_ok=True)
+    return final, start
