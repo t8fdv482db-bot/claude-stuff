@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Streamers · Clip Studio{% endblock %}
+{% block content %}
+<h1>Streamers</h1>
+<p class="muted">Each streamer has a layout, a facecam box (for the split layout) and their own hype words.</p>
+<table class="card" style="padding:0">
+  <tr><th>Name</th><th>Layout</th><th>Facecam</th><th>Clips</th><th></th></tr>
+  {% for s in streamers %}
+  <tr>
+    <td><a href="/streamers/{{ s.id }}"><b>{{ s.name }}</b></a></td>
+    <td>{{ s.layout }}</td>
+    <td>{% if s.facecam %}<span class="ok">✔ set</span>{% elif s.layout == 'split' %}<span class="warn">not set — clips fall back to blur</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td>{{ s.clips }}</td>
+    <td><a class="btn small" href="/streamers/{{ s.id }}">Edit</a> <a class="btn small" href="/review?streamer={{ s.id }}&status=">Clips</a></td>
+  </tr>
+  {% endfor %}
+</table>
+<div class="row" style="margin-top:14px">
+  <input id="new-name" placeholder="New streamer name">
+  <button id="add" class="primary">+ Add streamer</button>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById("add").onclick = async () => {
+  const name = document.getElementById("new-name").value.trim();
+  if (!name) return;
+  try { const s = await CS.api("POST", "/api/streamers", { name }); location.href = "/streamers/" + s.id; }
+  catch (e) { CS.toast(e.message, "error"); }
+};
+</script>
+{% endblock %}

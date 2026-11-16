@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Submissions · Clip Studio{% endblock %}
+{% block content %}
+<h1>Submissions</h1>
+<p class="muted">Every post you marked as posted. Campaign posts show a countdown until their submit window closes.</p>
+<table class="card" style="padding:0">
+  <thead><tr><th>Clip</th><th>Campaign</th><th>Platform</th><th>Post URL</th><th>Posted at</th><th>Time left</th><th>Submitted</th></tr></thead>
+  <tbody id="rows"></tbody>
+</table>
+<p id="none" class="muted hidden">Nothing posted yet. On the Review page use “Mark posted…” on a clip.</p>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const rows = {{ rows_json|safe }};
+  const tb = document.getElementById("rows");
+  document.getElementById("none").classList.toggle("hidden", rows.length > 0);
+  tb.innerHTML = rows.map((r) => `<tr data-id="${r.id}">
+    <td><a href="/review?clip=${r.clip_id}">${CS.esc(r.title || "clip #" + r.clip_id)}</a></td>
+    <td>${r.campaign ? CS.esc(r.campaign) + (r.submit_url ? ` · <a href="${CS.esc(r.submit_url)}" target="_blank" rel="noopener">submit page</a>` : "") : '<span class="muted">—</span>'}</td>
+    <td>${CS.esc(r.platform)}</td>
+    <td><a href="${CS.esc(r.url)}" target="_blank" rel="noopener">${CS.esc(r.url).slice(0, 50)}</a></td>
+    <td>${new Date(r.posted_at * 1000).toLocaleString()}</td>
+    <td class="left" data-deadline="${r.campaign ? (r.posted_at + r.submit_window_min * 60) * 1000 : ""}"></td>
+    <td><label class="toggle"><input type="checkbox" ${r.submitted ? "checked" : ""}> ✔</label></td></tr>`).join("");
+  tb.addEventListener("change", async (e) => {
+    const tr = e.target.closest("tr");
+    try { await CS.api("PATCH", "/api/posts/" + tr.dataset.id, { submitted: e.target.checked }); tick(); }
+    catch (err) { CS.toast(err.message, "error"); }
+  });
+  function tick() {
+    tb.querySelectorAll("td.left").forEach((td) => {
+      const done = td.parentElement.querySelector("input").checked;
+      if (!td.dataset.deadline || done) { td.innerHTML = done ? '<span class="ok">done</span>' : '<span class="muted">—</span>'; return; }
+      const left = Math.round((Number(td.dataset.deadline) - Date.now()) / 1000);
+      td.innerHTML = left > 0 ? `<b class="warn">${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}</b>` : '<b class="err">window passed</b>';
+    });
+  }
+  tick(); setInterval(tick, 1000);
+})();
+</script>
+{% endblock %}

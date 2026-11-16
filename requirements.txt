@@ -1,0 +1,15 @@
+fastapi>=0.110
+uvicorn>=0.29
+jinja2>=3.1
+python-multipart>=0.0.9
+numpy>=1.26
+yt-dlp[default]>=2025.11.12
+deno>=2.5
+streamlink>=6.0
+faster-whisper>=1.0
+chat-downloader>=0.2.8
+websockets>=12.0
+tzdata>=2024.1
+anthropic>=0.70
+google-api-python-client>=2.100
+google-auth-oauthlib>=1.2

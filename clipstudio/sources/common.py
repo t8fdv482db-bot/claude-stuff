@@ -1,0 +1,361 @@
+"""yt-dlp wrappers shared by all platforms: metadata, audio-only download, section download."""
+from __future__ import annotations
+
+import json
+import threading
+from pathlib import Path
+from typing import Any, Callable
+
+from ..media import Cancelled, UserError, run
+
+VIDEO_FMT = "bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b"
+AUDIO_FMT = "worstaudio[abr>=40]/worstaudio/bestaudio/worst"
+
+
+class _Log:
+    def __init__(self, log: Callable[[str], None] | None):
+        self.log = log
+
+    def debug(self, msg: str) -> None:
+        pass
+
+    def info(self, msg: str) -> None:
+        pass
+
+    def warning(self, msg: str) -> None:
+        if self.log and "nsig" not in msg:
+            self.log("yt-dlp: " + msg[:300])
+
+    def error(self, msg: str) -> None:
+        if self.log:
+            self.log("yt-dlp: " + msg[:300])
+
+
+def js_runtime() -> str | None:
+    """Path to deno (installed into the venv by requirements.txt). New yt-dlp needs it for YouTube."""
+    import shutil
+    import sys
+    try:
+        import deno
+        p = deno.find_deno_bin()
+        if p and Path(p).exists():
+            return str(p)
+    except Exception:  # noqa: BLE001
+        pass
+    for cand in (Path(sys.executable).parent / "deno", Path(sys.executable).parent / "deno.exe"):
+        if cand.exists():
+            return str(cand)
+    return shutil.which("deno")
+
+
+def cookie_browser() -> str:
+    from .. import db
+    return (db.setting("yt_cookies_browser") or "").strip().lower()
+
+
+def cli_args() -> list[str]:
+    """The same extras for the yt-dlp command line (live recorder)."""
+    out = []
+    js = js_runtime()
+    if js:
+        out += ["--js-runtimes", f"deno:{js}"]
+    if cookie_browser():
+        out += ["--cookies-from-browser", cookie_browser()]
+    return out
+
+
+def _opts(log=None, cancel: threading.Event | None = None,
+          progress: Callable[[float], None] | None = None, **extra) -> dict:
+    def hook(d: dict) -> None:
+        if cancel is not None and cancel.is_set():
+            from yt_dlp.utils import DownloadCancelled
+            raise DownloadCancelled("cancelled")
+        if progress and d.get("status") == "downloading":
+            total = d.get("total_bytes") or d.get("total_bytes_estimate")
+            if total:
+                progress(min(1.0, d.get("downloaded_bytes", 0) / total))
+            elif d.get("fragment_count"):
+                progress(min(1.0, (d.get("fragment_index") or 0) / d["fragment_count"]))
+    o = {"quiet": True, "no_warnings": False, "noprogress": True, "logger": _Log(log),
+         "progress_hooks": [hook], "retries": 5, "fragment_retries": 10,
+         "concurrent_fragment_downloads": 4, "noplaylist": True}
+    js = js_runtime()
+    if js:
+        o["js_runtimes"] = {"deno": {"path": js}}
+    if cookie_browser():
+        o["cookiesfrombrowser"] = (cookie_browser(),)
+    o.update(extra)
+    return o
+
+
+def friendly(err: Exception, platform: str, what: str = "video") -> UserError:
+    msg = str(err)
+    low = msg.lower()
+    names = {"youtube": "YouTube", "twitch": "Twitch", "kick": "Kick"}
+    name = names.get(platform, "This")
+    if "private" in low or "members-only" in low or "subscriber" in low:
+        return UserError(f"This {name} {what} is private or subscriber-only, so it can't be downloaded.")
+    if "not currently live" in low or "is offline" in low:
+        return UserError(f"This {name} channel isn't live right now.")
+    if "unsupported url" in low:
+        return UserError(f"That link doesn't look like a {name} video, VOD or channel.")
+    if "confirm you" in low and "not a bot" in low:
+        return UserError(f"{name} asked for a bot check. In Settings → Downloads pick the browser you're "
+                         "logged into YouTube with (Chrome/Firefox/Edge…) so Clip Studio can use its cookies.")
+    if "403" in low or "forbidden" in low or "unable to download" in low or "not found" in low or "404" in low:
+        return UserError(f"This {name} {what} isn't reachable (it may be deleted, region-locked or blocked). "
+                         f"Details: {msg[:200]}")
+    return UserError(f"{name} download failed: {msg[:300]}")
+
+
+def extract_info(url: str, log=None, flat: bool = False, **extra) -> dict:
+    import yt_dlp
+    o = _opts(log, skip_download=True, **extra)
+    if flat:
+        o["extract_flat"] = "in_playlist"
+        o["noplaylist"] = False
+        o["playlistend"] = extra.get("playlistend", 10)
+    with yt_dlp.YoutubeDL(o) as ydl:
+        return ydl.sanitize_info(ydl.extract_info(url, download=False))
+
+
+def metadata(url: str, platform: str, log=None) -> dict:
+    """Title, channel, duration and live status."""
+    from yt_dlp.utils import DownloadError
+    try:
+        info = extract_info(url, log)
+    except DownloadError as e:
+        raise friendly(e, platform) from e
+    if info.get("_type") == "playlist" and info.get("entries"):
+        info = info["entries"][0]
+    live = bool(info.get("is_live")) or info.get("live_status") in ("is_live", "post_live_processing")
+    return {
+        "id": str(info.get("id") or ""),
+        "title": info.get("title") or info.get("fulltitle") or "",
+        "channel": info.get("uploader") or info.get("channel") or info.get("uploader_id") or "",
+        "channel_id": info.get("channel_id") or info.get("uploader_id") or "",
+        "duration": float(info.get("duration") or 0),
+        "is_live": live,
+        "live_status": info.get("live_status"),
+        "release_timestamp": info.get("release_timestamp") or info.get("timestamp"),
+        "webpage_url": info.get("webpage_url") or url,
+        "width": info.get("width"), "height": info.get("height"),
+    }
+
+
+MEDIA_EXT = {".m4a", ".mp4", ".webm", ".opus", ".ogg", ".mp3", ".aac", ".ts", ".mkv", ".mov", ".flv", ".wav"}
+
+
+def _find(out_dir: Path, stem: str) -> Path | None:
+    """The downloaded media file for `stem` (never .part/.done/.json side files)."""
+    for p in sorted(out_dir.glob(stem + ".*")):
+        if p.suffix.lower() in MEDIA_EXT and p.stem == stem:
+            return p
+    return None
+
+
+def download_audio(url: str, out_dir: Path, platform: str, *, log=None, cancel=None, progress=None,
+                   extra: dict | None = None) -> Path:
+    """Low-bitrate audio only — the fast path that lets analysis start before any video is fetched."""
+    import yt_dlp
+    from yt_dlp.utils import DownloadCancelled, DownloadError
+    done = out_dir / "audio.done"
+    if done.exists():
+        p = _find(out_dir, "audio")
+        if p:
+            return p
+    o = _opts(log, cancel, progress, format=AUDIO_FMT, outtmpl=str(out_dir / "audio.%(ext)s"),
+              continuedl=True, **(extra or {}))
+    try:
+        with yt_dlp.YoutubeDL(o) as ydl:
+            ydl.download([url])
+    except DownloadCancelled as e:
+        raise Cancelled() from e
+    except DownloadError as e:
+        if cancel is not None and cancel.is_set():
+            raise Cancelled() from e
+        raise friendly(e, platform) from e
+    p = _find(out_dir, "audio")
+    if not p:
+        raise UserError("Audio download finished but no file was produced.")
+    done.write_text("ok")
+    return p
+
+
+def download_section(url: str, start: float, end: float, out_path: Path, platform: str, *,
+                     log=None, cancel=None, extra: dict | None = None) -> Path:
+    """Download only [start, end] of the video (max 1080p), cut on exact frames."""
+    import yt_dlp
+    from yt_dlp.utils import DownloadCancelled, DownloadError, download_range_func
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    stem = out_path.stem
+    existing = _find(out_path.parent, stem)
+    if existing and (out_path.parent / (stem + ".done")).exists():
+        return existing
+    o = _opts(log, cancel, None, format=VIDEO_FMT, outtmpl=str(out_path.parent / (stem + ".%(ext)s")),
+              download_ranges=download_range_func(None, [(max(0.0, start), end)]),
+              force_keyframes_at_cuts=True, merge_output_format="mp4", **(extra or {}))
+    try:
+        with yt_dlp.YoutubeDL(o) as ydl:
+            ydl.download([url])
+    except DownloadCancelled as e:
+        raise Cancelled() from e
+    except DownloadError as e:
+        if cancel is not None and cancel.is_set():
+            raise Cancelled() from e
+        raise friendly(e, platform) from e
+    p = _find(out_path.parent, stem)
+    if not p:
+        raise RuntimeError("section download produced no file")
+    (out_path.parent / (stem + ".done")).write_text(json.dumps({"start": start, "end": end}))
+    return p
+
+
+def download_full(url: str, out_dir: Path, platform: str, *, log=None, cancel=None, progress=None,
+                  extra: dict | None = None) -> Path:
+    import yt_dlp
+    from yt_dlp.utils import DownloadCancelled, DownloadError
+    done = out_dir / "full.done"
+    if done.exists():
+        p = _find(out_dir, "full")
+        if p:
+            return p
+    o = _opts(log, cancel, progress, format=VIDEO_FMT, outtmpl=str(out_dir / "full.%(ext)s"),
+              merge_output_format="mp4", continuedl=True, **(extra or {}))
+    try:
+        with yt_dlp.YoutubeDL(o) as ydl:
+            ydl.download([url])
+    except DownloadCancelled as e:
+        raise Cancelled() from e
+    except DownloadError as e:
+        raise friendly(e, platform) from e
+    p = _find(out_dir, "full")
+    if not p:
+        raise UserError("Video download finished but no file was produced.")
+    done.write_text("ok")
+    return p
+
+
+def cut_local(src: Path, start: float, end: float, dst: Path, cancel=None) -> Path:
+    """Frame-accurate cut from a local file (used when section download isn't possible)."""
+    run(["ffmpeg", "-nostdin", "-y", "-v", "error", "-fflags", "+genpts", "-ss", f"{max(0, start):.3f}", "-i", src,
+         "-t", f"{end - max(0, start):.3f}", "-map", "0:v:0", "-map", "0:a:0?",
+         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "16", "-c:a", "aac", "-b:a", "192k", dst],
+        cancel=cancel)
+    return dst
+
+
+def info_json(path: Path, data: Any | None = None) -> Any:
+    if data is None:
+        return json.loads(path.read_text("utf-8")) if path.exists() else None
+    path.write_text(json.dumps(data), "utf-8")
+    return data
+
+
+# ---------------------------------------------------------------- native HLS sections
+def _http_get(url: str, headers: dict | None = None, timeout: float = 30) -> bytes:
+    import urllib.request
+    last: Exception | None = None
+    for attempt in range(4):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", **(headers or {})})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read()
+        except Exception as e:  # noqa: BLE001
+            last = e
+            import time
+            time.sleep(1 + attempt)
+    raise RuntimeError(f"download failed: {last}")
+
+
+def hls_info(url: str, log=None, extra: dict | None = None, audio: bool = False) -> dict | None:
+    """The muxed (or audio-only) HLS media playlist for a video, or None if it isn't plain HLS."""
+    fmt = ("ba[protocol^=m3u8]/worst[protocol^=m3u8]" if audio
+           else "b[height<=1080][protocol^=m3u8]/b[protocol^=m3u8]")
+    info = extract_info(url, log, format=fmt, **(extra or {}))
+    if not str(info.get("protocol", "")).startswith("m3u8") or not info.get("url"):
+        return None
+    return {"url": info["url"], "headers": info.get("http_headers") or {}}
+
+
+def hls_duration(url: str, log=None, extra: dict | None = None) -> float:
+    """Total length of an HLS VOD playlist in seconds (works for in-progress VODs too)."""
+    from urllib.parse import urljoin
+    h = hls_info(url, log, extra, audio=True) or hls_info(url, log, extra)
+    if not h:
+        return 0.0
+    text = _http_get(h["url"], h["headers"]).decode("utf-8", "replace")
+    if "#EXT-X-STREAM-INF" in text:
+        variants = [ln for ln in text.splitlines() if ln and not ln.startswith("#")]
+        text = _http_get(urljoin(h["url"], variants[-1]), h["headers"]).decode("utf-8", "replace")
+    return sum(float(ln[8:].split(",")[0] or 0) for ln in text.splitlines() if ln.startswith("#EXTINF:"))
+
+
+def download_section_hls(url: str, start: float, end: float, out_path: Path, *, log=None, cancel=None,
+                         extra: dict | None = None, audio: bool = False,
+                         progress=None) -> tuple[Path, float] | None:
+    """Fetch only the HLS segments covering [start, end], join them and cut exactly.
+
+    Returns (file, source time of its first frame), or None when the source isn't simple HLS.
+    With audio=True the result is an audio-only .m4a (for analysis).
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from urllib.parse import urljoin
+    h = hls_info(url, log, extra, audio=audio)
+    if not h:
+        return None
+    text = _http_get(h["url"], h["headers"]).decode("utf-8", "replace")
+    if "#EXT-X-STREAM-INF" in text:            # master playlist: take the last (usually best) variant
+        variants = [ln for ln in text.splitlines() if ln and not ln.startswith("#")]
+        h["url"] = urljoin(h["url"], variants[-1])
+        text = _http_get(h["url"], h["headers"]).decode("utf-8", "replace")
+    if "#EXT-X-KEY" in text and "METHOD=NONE" not in text:
+        return None                              # encrypted: let yt-dlp handle it
+    segs, t, dur, init = [], 0.0, None, None
+    for ln in text.splitlines():
+        ln = ln.strip()
+        if ln.startswith("#EXTINF:"):
+            dur = float(ln[8:].split(",")[0] or 0)
+        elif ln.startswith("#EXT-X-MAP:") and 'URI="' in ln:
+            init = urljoin(h["url"], ln.split('URI="')[1].split('"')[0])
+        elif ln and not ln.startswith("#") and dur is not None:
+            segs.append((t, t + dur, urljoin(h["url"], ln)))
+            t += dur
+            dur = None
+    pick = [s for s in segs if s[1] > start and s[0] < end]
+    if not pick:
+        raise UserError("That part of the video isn't available (past the end of the VOD?).")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out_path.parent / (out_path.stem + ".parts.ts")
+
+    def get(u: str) -> bytes:
+        if cancel is not None and cancel.is_set():
+            raise Cancelled()
+        return _http_get(u, h["headers"])
+
+    done_n = [0]
+
+    def get_counted(u: str) -> bytes:
+        b = get(u)
+        done_n[0] += 1
+        if progress:
+            progress(done_n[0] / len(pick))
+        return b
+
+    with open(tmp, "wb") as fh:          # stream to disk in order (hours of audio don't fit in RAM)
+        if init:
+            fh.write(get(init))
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            for b in pool.map(get_counted, [s[2] for s in pick]):
+                fh.write(b)
+    seg0 = pick[0][0]
+    if audio:
+        final = out_path.with_suffix(".m4a")
+        run(["ffmpeg", "-nostdin", "-y", "-v", "error", "-fflags", "+genpts", "-ss", f"{max(0.0, start - seg0):.3f}",
+             "-i", tmp, "-t", f"{end - start:.3f}", "-vn", "-ac", "1", "-c:a", "aac", "-b:a", "64k", final],
+            cancel=cancel)
+    else:
+        final = out_path.with_suffix(".mp4")
+        cut_local(tmp, start - seg0, end - seg0, final, cancel=cancel)
+    tmp.unlink(missing_ok=True)
+    return final, start
