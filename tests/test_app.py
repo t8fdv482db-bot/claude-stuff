@@ -77,3 +77,17 @@ def test_account_api_flow(client):
     client.put(f"/api/clips/{cid}/checklist", json={"captions": True, "commentary": True, "credit": True})
     assert client.post(f"/api/assignments/{aid}/status", json={"status": "edited"}).status_code == 200
     assert client.get("/api/board").json()["pool"][0]["platforms"] == ["tiktok"]
+
+
+def test_download_name(client, tmp_path):
+    from clipstudio import db
+    v = tmp_path / "c.mp4"
+    v.write_bytes(b"\x00" * 2048)
+    cid = db.insert("clips", job_id=1, start=0, end=30, render_state="ready", video_path=str(v), title="Hi there")
+    r = client.get(f"/api/clips/{cid}/download?name=clip-studio-hi-there.mp4")
+    assert r.status_code == 200 and 'filename="clip-studio-hi-there.mp4"' in r.headers["content-disposition"]
+    assert r.headers["content-type"] == "video/mp4" and r.headers.get("accept-ranges") == "bytes"
+    bad = client.get(f"/api/clips/{cid}/download?name=../../etc/passwd.mp4")
+    assert f'{cid:04d}_Hi_there.mp4' in bad.headers["content-disposition"]       # unsafe names are ignored
+    part = client.get(f"/api/clips/{cid}/download", headers={"Range": "bytes=0-99"})
+    assert part.status_code == 206 and len(part.content) == 100                     # resumable downloads

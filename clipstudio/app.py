@@ -653,13 +653,19 @@ def submissions_page(request: Request):
 
 # ---------------------------------------------------------------- export + YouTube
 @app.get("/api/clips/{clip_id}/download")
-def download_clip(clip_id: int):
+def download_clip(clip_id: int, name: str | None = None):
+    """The rendered MP4 as a download. `name` (from the Share window) sets a friendly filename."""
+    import re
     from fastapi.responses import FileResponse
     from .export import slug
     c = db.get("clips", clip_id)
     if not c or not c.get("video_path") or not Path(c["video_path"]).exists():
         raise HTTPException(404, "This clip isn't rendered yet.")
-    return FileResponse(c["video_path"], media_type="video/mp4", filename=f"{clip_id:04d}_{slug(c.get('title'))}.mp4")
+    filename = f"{clip_id:04d}_{slug(c.get('title'))}.mp4"
+    if name and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,90}\.mp4", name):
+        filename = name
+    return FileResponse(c["video_path"], media_type="video/mp4", filename=filename,
+                        headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/clips/{clip_id}/caption.txt")
