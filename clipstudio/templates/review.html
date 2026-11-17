@@ -13,7 +13,6 @@
   <select id="f-streamer"><option value="">All streamers</option>{% for s in streamers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select>
   <select id="f-job"><option value="">All jobs</option>{% for j in jobs %}<option value="{{ j.id }}">#{{ j.id }} {{ (j.title or j.url)[:60] }}</option>{% endfor %}</select>
   <span class="spacer"></span>
-  <button id="schedule-approved" title="Upload approved clips to YouTube as private, scheduled into your next free slots">📅 Schedule approved on YouTube</button>
   <a class="btn" href="/api/export/approved.zip" title="mp4 + caption .txt for every approved clip">⬇ Export all approved (.zip)</a>
 </div>
 <p class="muted small">Keys: <b>A</b> approve · <b>R</b> reject · <b>J</b>/<b>K</b> next/previous · <b>Space</b> play/pause. Trimming re-renders in the background.</p>

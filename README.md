@@ -6,10 +6,10 @@ Clip Studio runs on your own computer (Windows or Mac). You paste a YouTube, Twi
 (a finished video/VOD *or* a channel that's live right now). It finds the best 20–60 second
 moments using chat, audio and what the streamer says, then turns each one into a 1080×1920
 Short with word-by-word captions, a title and a hook. You check every clip in your browser, nudge
-the cut if needed, approve it, and then either schedule it on YouTube or download it for TikTok,
-Reels, X and paid clipping campaigns (Whop / Content Rewards).
+the cut if needed, approve it, and then download it (or use **Share**) to post on TikTok,
+Instagram Reels, YouTube Shorts, X and paid clipping campaigns (Whop / Content Rewards).
 
-Nothing is ever posted unless you approved it.
+Clip Studio never logs in to your social accounts and never posts for you — you upload each clip yourself.
 
 ---
 
@@ -23,15 +23,14 @@ Nothing is ever posted unless you approved it.
 6. [Live streams (GTA 6 launch day)](#6-live-streams-gta-6-launch-day)
 7. [Review clips](#7-review-clips)
 8. [AI titles and filtering (optional)](#8-ai-titles-and-filtering-optional)
-9. [YouTube scheduling](#9-youtube-scheduling)
-10. [Campaigns (Whop / Content Rewards)](#10-campaigns-whop--content-rewards)
-11. [Export for TikTok, Reels and X](#11-export-for-tiktok-reels-and-x)
-12. [Posting to several accounts](#12-posting-to-several-accounts)
-13. [Settings explained](#13-settings-explained)
-14. [Speed tips](#14-speed-tips)
-15. [Troubleshooting](#15-troubleshooting)
-16. [Where your files are](#16-where-your-files-are)
-17. [For developers](#17-for-developers)
+9. [Campaigns (Whop / Content Rewards)](#9-campaigns-whop--content-rewards)
+10. [Share to TikTok, Instagram and YouTube](#10-share-to-tiktok-instagram-and-youtube)
+11. [Posting to several accounts](#11-posting-to-several-accounts)
+12. [Settings explained](#12-settings-explained)
+13. [Speed tips](#13-speed-tips)
+14. [Troubleshooting](#14-troubleshooting)
+15. [Where your files are](#15-where-your-files-are)
+16. [For developers](#16-for-developers)
 
 ---
 
@@ -209,34 +208,7 @@ The key is stored only on your computer and is never written to logs. Each job s
 use and estimated cost. With the default model (`claude-sonnet-5-5`) it's roughly half a cent per
 candidate clip.
 
-## 9. YouTube scheduling
-
-One-time setup (about 10 minutes):
-
-1. Go to <https://console.cloud.google.com>, create a project (any name).
-2. **APIs & Services → Library**: search **YouTube Data API v3** → **Enable**.
-3. **APIs & Services → OAuth consent screen**: choose **External**, fill in the app name and your
-   email. Under **Test users** add the Google account that owns your YouTube channel.
-4. **APIs & Services → Credentials → Create credentials → OAuth client ID**, type **Desktop app**.
-   Download the JSON file.
-5. In Clip Studio: **Settings → YouTube → Upload client_secret.json**, then **Connect YouTube account**
-   and sign in with your channel's Google account.
-6. Set your **upload slots** (e.g. `11:00, 15:00, 19:00, 22:00`) and your **timezone**, Save.
-
-Then on the Review page approve clips and press **📅 Schedule approved on YouTube**. Each approved
-clip is uploaded as **private** with a scheduled publish time in your next free slot, with `#shorts`
-added. The **Schedule** page shows the week as a calendar.
-
-> **Important:** Google only lets *unverified* API projects upload **private** videos. Until your
-> project passes Google's audit (request it in the Cloud Console under the YouTube API quotas page),
-> scheduled clips stay private and won't go public by themselves – publish them by hand in YouTube
-> Studio or get the project verified.
-
-YouTube allows a limited number of uploads per day through the API. When the limit is hit you'll
-see *"YouTube daily quota reached, the rest will retry tomorrow"* – the remaining clips are retried
-automatically after the quota resets.
-
-## 10. Campaigns (Whop / Content Rewards)
+## 9. Campaigns (Whop / Content Rewards)
 
 Under **Campaigns**, create one profile per paid campaign with its rules:
 
@@ -257,18 +229,35 @@ After you post a clip, press **Mark posted…**, pick the platform and paste the
 countdown starts – *"Submit within 30:00"* – with a button to the submission page. When you've
 submitted, press **Submitted ✔**. The **Submissions** page lists every post with its countdown.
 
-## 11. Export for TikTok, Reels and X
+## 10. Share to TikTok, Instagram and YouTube
 
-- Each clip card has **⬇ MP4** and **⬇ Caption** (a .txt with the disclosure, title, description
-  and hashtags ready to paste).
-- **⬇ Export all approved (.zip)** on the Review page downloads every approved clip with its caption file.
+Every finished clip has a **📤 Share** button (Review cards, and the Pipeline/Analytics cards).
+It opens a small window with a preview, an editable **caption** and **hashtags**, and four buttons:
 
-## 12. Posting to several accounts
+- **TikTok / Instagram / YouTube**: one click **downloads the video** (`clip-studio-<title>.mp4`),
+  **copies your caption**, and **opens that site's upload page** in a new tab. Drag the downloaded file
+  into the upload page and paste the caption (Ctrl+V / Cmd+V).
+  - TikTok opens TikTok Studio's upload page, YouTube opens YouTube Studio's upload screen.
+  - Instagram has no direct upload page: click **+ Create** in the left menu, then **Post**.
+- **Download**: just the video file.
+
+The platforms don't accept a pre-filled caption from other sites, which is why it's copied for you
+to paste. Clip Studio never logs in to your accounts and never posts for you.
+If your browser blocks the new tab, the window shows a link to the upload page instead.
+
+Videos are MP4 (H.264 + AAC), 1080×1920 — the format all three platforms want. The window shows a
+gentle note if a clip is longer than the platform likes (YouTube Shorts: up to 3 minutes; Instagram:
+Reels over 3 minutes aren't recommended to new audiences; TikTok web uploads: up to 30 minutes, under 10 GB).
+
+**Other exports:** each clip card also has **⬇ MP4** and **⬇ Caption** (a .txt to paste), and
+**⬇ Export all approved (.zip)** on the Review page downloads every approved clip with its caption file.
+
+## 11. Posting to several accounts
 
 If you run more than one channel (e.g. a Kai Cenat GTA 6 page on TikTok and a Lacy page on YouTube Shorts):
 
-1. **Accounts** → *Add account*: platform (YouTube Shorts / TikTok / Instagram Reels), handle, niche (e.g. “Kai Cenat GTA 6”),
-   follower count and the max posts per day (default 3). Each account gets a color badge.
+1. **Board** → **+ Add account**: platform (YouTube Shorts / TikTok / Instagram Reels), handle, niche (e.g. “Kai Cenat GTA 6”),
+   follower count and the max posts per day (default 3). Each account gets a color badge; edit it later with ✎ on its column.
 2. **Board**: every account is a column, grouped by platform. **Drag** an approved clip onto an account
    (on a phone: **tap the clip, then tap the account**). You're warned when a clip doesn't fit the account's niche.
 3. **Pipeline**: each clip-on-account moves **Raw → Edited → Scheduled → Posted**. Filter by platform, account or streamer.
@@ -286,7 +275,7 @@ Safeguards against demonetization (enforced, not just suggested):
 
 Marking a clip *Posted* with its link also adds it to **Submissions**, so campaign countdowns keep working.
 
-## 13. Settings explained
+## 12. Settings explained
 
 | Section | What it does |
 |---|---|
@@ -295,13 +284,12 @@ Marking a clip *Posted* with its link also adds it to **Submissions**, so campai
 | Transcription | Whisper model (`tiny.en` fastest … `large-v3` best), CPU/GPU, smart vs full transcription. |
 | AI review | On/off, API key, model, minimum AI score. |
 | Captions | Font, size, colours, words per caption line (2–3 looks best). |
-| YouTube | client_secret.json, connect account, upload slots, timezone. |
 | Live mode | Clip threshold, reaction tail, how much footage to keep, catch-up hours. |
 | Notifications | Discord webhook (create one in Discord: channel → Edit → Integrations → Webhooks). |
 | Posting accounts | Default daily post limit and the max clip length per platform. |
 | Storage | Where files go, max disk use (oldest *source* files are deleted automatically when over), keep source files, max video length, jobs at once. |
 
-## 14. Speed tips
+## 13. Speed tips
 
 - **NVIDIA GPU?** Clip Studio uses it automatically for transcription (much faster). If the GPU
   can't be used it falls back to the CPU on its own.
@@ -309,7 +297,7 @@ Marking a clip *Posted* with its link also adds it to **Submissions**, so campai
 - Keep **Transcribe: Smart** – on long VODs it only transcribes around likely moments.
 - Renders run in parallel (half your CPU cores), so the page never freezes.
 
-## 15. Troubleshooting
+## 14. Troubleshooting
 
 | Message | Fix |
 |---|---|
@@ -322,18 +310,17 @@ Marking a clip *Posted* with its link also adds it to **Submissions**, so campai
 | Downloads suddenly fail for every link | Restart Clip Studio with run.bat / run.sh – it updates the downloader on start. |
 | A clip says *Render failed* | Press **Retry** on the card; the job **Log** shows details. |
 | Captions look like a different font | The font in Settings must be installed on your computer (Arial is safe). |
-| YouTube: *quota reached* | Normal – the rest upload automatically tomorrow. |
 
-## 16. Where your files are
+## 15. Where your files are
 
 Everything lives in a **ClipStudio** folder in your home folder (`C:\Users\<you>\ClipStudio` or
-`~/ClipStudio`): the database, YouTube login, and a `media` folder with jobs, caches and the
+`~/ClipStudio`): the database and a `media` folder with jobs, caches and the
 rendered clips (`media/clips/<number>/clip.mp4`). You can move the media folder in Settings → Storage.
 To start completely fresh, close Clip Studio and delete that folder.
 
 ---
 
-## 17. For developers
+## 16. For developers
 
 ```
 clipstudio/
@@ -346,7 +333,8 @@ clipstudio/
   scoring.py      per-second signals, rolling z-scores, peak picking, windows
   ai.py           Claude review (structured JSON output) + title regeneration
   render.py       layouts, ASS captions, thumbnails/GIF
-  publish.py      YouTube OAuth/upload/scheduler + export
+  export.py       mp4 + caption export, zip of approved clips
+  static/share-core.js, share.js   the Share window (download + copy caption + open upload page)
   campaigns.py    campaign rule checker
   accounts.py     multi-account posting: assignments, safeguards, pipeline, calendar, analytics
   accounts_routes.py  its pages + API
@@ -358,7 +346,9 @@ run.sh            macOS / Linux launcher
 requirements.txt
 ```
 
-Run the tests (needs ffmpeg): `pip install pytest && python -m pytest tests`.
+Run the tests (needs ffmpeg): `pip install pytest && python -m pytest tests`. The Share logic's JavaScript
+tests (`tests/share.test.mjs`) run inside that too when Node.js is installed, or directly with
+`node --test tests/share.test.mjs`.
 The synthetic end-to-end tests generate a 6-minute `testsrc2` video with loud spikes, a fake chat
 file and a fake transcript, and check the scorer finds the planted moments (±5 s) and renders
 1080×1920 clips with audio, both for VODs and for live watch mode.
@@ -366,7 +356,7 @@ file and a fake transcript, and check the scorer finds the planted moments (±5 
 Design notes: the server binds to 127.0.0.1 only; every external command is an argument list
 (no shell strings); ffmpeg renders run with the clip folder as working directory and a relative
 `captions.ass` (avoids Windows drive-letter escaping); every long step caches to disk so restarts
-resume; API keys and OAuth tokens are never logged.
+resume; API keys are never logged. Clip Studio never logs in to social accounts or posts for you.
 
 Launchers: `run.bat` (Windows) and `run.sh` (macOS/Linux) do the same steps. They find Python 3.11+
 (`py -3` or `python` on Windows), stop with an install hint if Python or ffmpeg is missing, create

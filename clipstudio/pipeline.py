@@ -597,11 +597,6 @@ def housekeeping() -> None:
                 p.unlink(missing_ok=True)
                 done = p.with_suffix(".done")
                 done.unlink(missing_ok=True)
-    try:
-        from . import publish
-        publish.retry_due_uploads()
-    except Exception:  # noqa: BLE001
-        pass
 
 
 def sub_job_active(p: Path, root: Path, active: set[str]) -> bool:

@@ -11,5 +11,3 @@ chat-downloader>=0.2.8
 websockets>=12.0
 tzdata>=2024.1
 anthropic>=0.70
-google-api-python-client>=2.100
-google-auth-oauthlib>=1.2

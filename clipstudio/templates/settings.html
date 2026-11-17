@@ -55,25 +55,9 @@
   <label>Words per line <input data-k="caption_words" type="number" min="1" max="4"></label>
 </div>
 
-<h2 id="youtube">YouTube</h2>
-<div class="card">
-  <p id="yt-status">{% if yt.connected %}<span class="ok">✔ Connected{% if yt.channel %} to <b>{{ yt.channel }}</b>{% endif %}</span>{% elif yt.has_secret %}<span class="warn">client_secret.json uploaded — now press Connect.</span>{% else %}<span class="muted">Not set up.</span>{% endif %}
-    {% if yt.error %}<span class="err">{{ yt.error }}</span>{% endif %}</p>
-  <div class="row">
-    <label class="btn" style="flex-direction:row">1. Upload client_secret.json<input id="yt-secret" type="file" accept=".json,application/json" class="hidden"></label>
-    <button id="yt-connect">2. Connect YouTube account</button>
-    {% if yt.connected %}<button id="yt-disconnect" class="ghost">Disconnect</button>{% endif %}
-  </div>
-  <div class="form-grid" style="margin-top:12px">
-    <label>Upload slots (your timezone) <input data-k="yt_slots" placeholder="11:00, 15:00, 19:00, 22:00"></label>
-    <label>Timezone <input data-k="timezone" list="tzs"><datalist id="tzs">{% for tz in timezones %}<option value="{{ tz }}">{% endfor %}</datalist></label>
-  </div>
-  <p class="muted small">Clips upload as <b>private</b> with a scheduled publish time and <code>#shorts</code>. Note: Google only lets <b>unverified</b> API projects upload private videos —
-    they stay private even after the scheduled time until your project passes Google's audit. See the README for the step-by-step setup.</p>
-</div>
-
 <h2>Posting accounts</h2>
 <div class="card form-grid">
+  <label>Your timezone (for the posting calendar) <input data-k="timezone" list="tzs"><datalist id="tzs">{% for tz in timezones %}<option value="{{ tz }}">{% endfor %}</datalist></label>
   <label>Default max posts per account per day <input data-k="default_daily_limit" type="number" min="1" max="50"></label>
   <label>Max length — YouTube Shorts (s) <input data-k="max_len_youtube" type="number" min="15"></label>
   <label>Max length — TikTok (s) <input data-k="max_len_tiktok" type="number" min="15"></label>
@@ -136,21 +120,6 @@
     try { await CS.api("POST", "/api/settings", { discord_webhook: document.querySelector("[data-k=discord_webhook]").value }); await CS.api("POST", "/api/settings/test-discord"); CS.toast("Sent — check Discord", "ok"); }
     catch (e) { CS.toast(e.message, "error"); }
   };
-  $("yt-secret").onchange = async () => {
-    const fd = new FormData(); fd.append("file", $("yt-secret").files[0]);
-    try { await CS.api("POST", "/api/youtube/client-secret", fd); CS.toast("client_secret.json saved — now press Connect", "ok"); setTimeout(() => location.reload(), 800); }
-    catch (e) { CS.toast(e.message, "error", 8000); }
-  };
-  $("yt-connect").onclick = async () => {
-    try {
-      const r = await CS.api("POST", "/api/youtube/connect"); CS.toast(r.message, "ok", 8000);
-      const poll = setInterval(async () => {
-        const s = await CS.api("GET", "/api/youtube/status");
-        if (!s.connecting) { clearInterval(poll); s.error ? CS.toast(s.error, "error", 9000) : location.reload(); }
-      }, 2000);
-    } catch (e) { CS.toast(e.message, "error", 8000); }
-  };
-  $("yt-disconnect")?.addEventListener("click", async () => { await CS.api("POST", "/api/youtube/disconnect"); location.reload(); });
   CS.api("GET", "/api/storage").then((d) => ($("usage").textContent = `${d.used_gb} GB used of ${d.limit_gb} GB`)).catch(() => {});
 })();
 </script>
