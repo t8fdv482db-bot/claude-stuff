@@ -70,6 +70,7 @@
           <button class="small danger" data-act="reject">✕ Reject</button>
           <button class="small" data-act="regen" title="Ask the AI for a new title">✨ New title</button>
           <button class="small" data-act="posted">Mark posted…</button>
+          ${c.video_url && c.render_state === "ready" ? `<button class="small share-btn" data-act="share">📤 Share</button>` : ""}
           ${c.video_url ? `<a class="btn small" href="/api/clips/${c.id}/download">⬇ MP4</a><a class="btn small" href="/api/clips/${c.id}/caption.txt">⬇ Caption</a>` : ""}
         </div>
       </div></div>`;
@@ -132,6 +133,8 @@
         replaceCard(r);
       } else if (action === "rerender") {
         await CS.api("POST", `/api/clips/${id}/rerender`);
+      } else if (action === "share") {
+        CS.openShare(id);
       } else if (action === "posted") {
         openPostDialog(id);
       } else if (action === "submitted") {
@@ -163,7 +166,7 @@
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.target.matches("input, textarea, select") || e.ctrlKey || e.metaKey || e.altKey || $("post-dlg").open) return;
+    if (e.target.matches("input, textarea, select") || e.ctrlKey || e.metaKey || e.altKey || document.querySelector("dialog[open]")) return;
     const c = clips[sel];
     const k = e.key.toLowerCase();
     if (k === "j") { select(sel + 1); e.preventDefault(); }

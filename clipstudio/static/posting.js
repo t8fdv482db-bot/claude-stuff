@@ -88,7 +88,7 @@
         <button class="small" data-act="stats">Save</button></div>
         <button class="small ghost" data-act="move" data-to="scheduled">← Not posted yet</button>`;
     }
-    return `<div class="pcard" data-id="${a.id}" data-clip="${c.id}" data-w="${esc(JSON.stringify(a.warnings || []))}">
+    return `<div class="pcard" data-id="${a.id}" data-clip="${c.id}" data-plat="${esc((a.account || {}).platform || "")}" data-w="${esc(JSON.stringify(a.warnings || []))}">
       <div class="pcard-top">
         ${c.thumb_url ? `<img src="${esc(c.thumb_url)}" alt="" loading="lazy">` : `<div class="noimg"></div>`}
         <div class="pcard-meta">
@@ -96,6 +96,7 @@
           <div class="pcard-title">${esc(c.title || "Clip #" + c.id)}</div>
           <div class="muted small">${esc(c.streamer || "")} · ${CS.fmtDur(c.length)} · <a href="/review?clip=${c.id}">clip #${c.id}</a></div>
         </div>
+        ${c.render_state === "ready" ? `<button class="small share-btn" data-act="share" title="Share to ${esc(P[a.account && a.account.platform] || "")}">📤</button>` : ""}
         <button class="small ghost x" data-act="unassign" title="Remove from this account">✕</button>
       </div>
       ${warningsHtml(a.warnings)}
@@ -112,6 +113,7 @@
       const before = JSON.parse(el.dataset.w || "[]");
       try {
         let r;
+        if (b.dataset.act === "share") { CS.openShare(el.dataset.clip, { platform: el.dataset.plat }); return; }
         if (b.dataset.act === "checklist") { if (await openChecklist(el.dataset.clip)) refresh(); return; }
         if (b.dataset.act === "move") r = await CS.api("POST", `/api/assignments/${id}/status`, { status: b.dataset.to });
         if (b.dataset.act === "schedule") r = await CS.api("POST", `/api/assignments/${id}/status`, { status: "scheduled", scheduled_at: el.querySelector(".sched-in").value });

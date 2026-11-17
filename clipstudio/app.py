@@ -668,6 +668,33 @@ def download_clip(clip_id: int, name: str | None = None):
                         headers={"Cache-Control": "no-store"})
 
 
+@app.get("/api/clips/{clip_id}/share-info")
+def share_info(clip_id: int):
+    """What the Share window needs: thumbnail, caption, hashtags and the file's real format/size."""
+    import re
+    from .export import caption_text
+    from .media import probe
+    from .pipeline import public_clip
+    c = db.get("clips", clip_id)
+    if not c or not c.get("video_path") or not Path(c["video_path"]).exists():
+        raise HTTPException(404, "This clip isn't rendered yet.")
+    info = probe(Path(c["video_path"]))
+    v = next((s for s in info.get("streams", []) if s.get("codec_type") == "video"), {})
+    a = next((s for s in info.get("streams", []) if s.get("codec_type") == "audio"), {})
+    text = caption_text(c)
+    lines = text.splitlines()
+    tag_lines = [ln for ln in lines if ln.strip() and all(w.startswith(("#", "@")) for w in ln.split())]
+    caption = "\n".join(ln for ln in lines if ln not in tag_lines).strip()
+    pc = public_clip(c)
+    return {"id": clip_id, "title": c.get("title") or "", "thumb_url": pc.get("thumb_url"),
+            "download_url": f"/api/clips/{clip_id}/download", "caption": caption,
+            "hashtags": " ".join(tag_lines), "width": v.get("width"), "height": v.get("height"),
+            "duration": float(info.get("format", {}).get("duration") or 0),
+            "size": Path(c["video_path"]).stat().st_size,
+            "mp4": "mp4" in (info.get("format", {}).get("format_name") or "") and v.get("codec_name") == "h264"
+                   and a.get("codec_name") in ("aac", None)}
+
+
 @app.get("/api/clips/{clip_id}/caption.txt")
 def download_caption(clip_id: int):
     from .export import caption_text, slug

@@ -234,3 +234,29 @@ body.selecting .col { outline: 2px dashed var(--accent); outline-offset: -4px; c
   button.small, .btn.small { min-height: 32px; }
 }
 .toast.warn { border-color: var(--warn); background: #2b2210; white-space: pre-line; }
+
+/* ---------- share window */
+dialog.share-dlg { max-width: 640px; }
+.share-head { display: flex; justify-content: space-between; align-items: center; }
+.share-head h3 { margin: 0; }
+.share-body { display: grid; grid-template-columns: 120px 1fr; gap: 14px; margin: 10px 0; }
+.share-thumb img { width: 120px; aspect-ratio: 9/16; object-fit: cover; border-radius: 10px; background: #000; display: block; }
+.share-meta { margin-top: 6px; }
+.share-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.share-main label { display: flex; }
+.share-main textarea, .share-main input { width: 100%; }
+.share-notes { display: flex; flex-direction: column; gap: 6px; }
+.share-plats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.share-plat { justify-content: center; padding: 10px 8px; font-weight: 600; }
+.share-plat.suggested { border-color: var(--accent); }
+.share-plat.dl { background: var(--bg); }
+.share-done { margin-top: 12px; background: #12361f; border: 1px solid #1f5c35; border-radius: 10px; padding: 10px 12px; }
+.share-done ol { margin: 6px 0 8px 18px; padding: 0; }
+.share-foot { margin-bottom: 0; }
+.share-btn { font-weight: 600; }
+@media (max-width: 560px) {
+  .share-body { grid-template-columns: 1fr; }
+  .share-thumb { display: flex; gap: 10px; align-items: flex-end; }
+  .share-thumb img { width: 80px; }
+  .share-plats { grid-template-columns: 1fr 1fr; }
+}
