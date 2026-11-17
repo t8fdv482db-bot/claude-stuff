@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Board · Clip Studio{% endblock %}
+{% block mainclass %}wide{% endblock %}
+{% block content %}
+<div class="row">
+  <h1 style="margin:0">Assignment board</h1><span class="spacer"></span>
+  <a class="btn small" href="/accounts">Manage accounts</a>
+</div>
+<p class="muted small">Drag a clip onto an account to assign it — or on a phone, <b>tap a clip, then tap an account</b>.
+One clip can go to one account per platform (posting the same clip twice on a platform gets both accounts flagged).</p>
+
+<div class="toolbar">
+  <div class="tabs" id="pool-tabs"><button data-pool="approved" class="on">Approved clips</button><button data-pool="all">All clips</button></div>
+  <select id="f-streamer"><option value="">All streamers</option>{% for s in streamers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select>
+  <label class="toggle"><input type="checkbox" id="f-free"> Hide clips already on every platform</label>
+</div>
+
+<section class="pool card">
+  <div class="pool-head"><b>Clips</b> <span class="muted small" id="pool-count"></span> <span id="sel-hint" class="sel-hint hidden">Now tap an account ↓ <button class="small ghost" id="sel-cancel">cancel</button></span></div>
+  <div class="pool-strip" id="pool"></div>
+</section>
+
+<div id="board"></div>
+<p id="no-accounts" class="muted hidden">No accounts yet. <a href="/accounts">Add your accounts</a> to start assigning clips.</p>
+{% endblock %}
+{% block scripts %}
+<script src="/static/posting.js"></script>
+<script src="/static/board.js"></script>
+{% endblock %}

@@ -26,11 +26,12 @@ Nothing is ever posted unless you approved it.
 9. [YouTube scheduling](#9-youtube-scheduling)
 10. [Campaigns (Whop / Content Rewards)](#10-campaigns-whop--content-rewards)
 11. [Export for TikTok, Reels and X](#11-export-for-tiktok-reels-and-x)
-12. [Settings explained](#12-settings-explained)
-13. [Speed tips](#13-speed-tips)
-14. [Troubleshooting](#14-troubleshooting)
-15. [Where your files are](#15-where-your-files-are)
-16. [For developers](#16-for-developers)
+12. [Posting to several accounts](#12-posting-to-several-accounts)
+13. [Settings explained](#13-settings-explained)
+14. [Speed tips](#14-speed-tips)
+15. [Troubleshooting](#15-troubleshooting)
+16. [Where your files are](#16-where-your-files-are)
+17. [For developers](#17-for-developers)
 
 ---
 
@@ -262,7 +263,30 @@ submitted, press **Submitted ✔**. The **Submissions** page lists every post wi
   and hashtags ready to paste).
 - **⬇ Export all approved (.zip)** on the Review page downloads every approved clip with its caption file.
 
-## 12. Settings explained
+## 12. Posting to several accounts
+
+If you run more than one channel (e.g. a Kai Cenat GTA 6 page on TikTok and a Lacy page on YouTube Shorts):
+
+1. **Accounts** → *Add account*: platform (YouTube Shorts / TikTok / Instagram Reels), handle, niche (e.g. “Kai Cenat GTA 6”),
+   follower count and the max posts per day (default 3). Each account gets a color badge.
+2. **Board**: every account is a column, grouped by platform. **Drag** an approved clip onto an account
+   (on a phone: **tap the clip, then tap the account**). You're warned when a clip doesn't fit the account's niche.
+3. **Pipeline**: each clip-on-account moves **Raw → Edited → Scheduled → Posted**. Filter by platform, account or streamer.
+4. **Calendar**: what's scheduled or posted on each account per day; days over an account's limit turn red.
+5. **Analytics**: type in views and earnings for each posted clip; see totals, RPM and the top streamers and topics per platform.
+
+Safeguards against demonetization (enforced, not just suggested):
+
+- The **same clip can't go to two accounts on the same platform** (that's flagged as reused content).
+- A clip can't be marked **Edited (ready)** until its **originality checklist** is ticked: captions/on-screen text added,
+  commentary/hook/edits added, and the source streamer credited. Clip Studio shows hints for what it can detect itself.
+- **Daily post limit** per account: you're warned when scheduling or posting would go over it.
+- Clips **too long for the platform** are flagged (limits are in Settings → Posting accounts), and TikTok clips under
+  1 minute are flagged as not eligible for Creator Rewards.
+
+Marking a clip *Posted* with its link also adds it to **Submissions**, so campaign countdowns keep working.
+
+## 13. Settings explained
 
 | Section | What it does |
 |---|---|
@@ -274,9 +298,10 @@ submitted, press **Submitted ✔**. The **Submissions** page lists every post wi
 | YouTube | client_secret.json, connect account, upload slots, timezone. |
 | Live mode | Clip threshold, reaction tail, how much footage to keep, catch-up hours. |
 | Notifications | Discord webhook (create one in Discord: channel → Edit → Integrations → Webhooks). |
+| Posting accounts | Default daily post limit and the max clip length per platform. |
 | Storage | Where files go, max disk use (oldest *source* files are deleted automatically when over), keep source files, max video length, jobs at once. |
 
-## 13. Speed tips
+## 14. Speed tips
 
 - **NVIDIA GPU?** Clip Studio uses it automatically for transcription (much faster). If the GPU
   can't be used it falls back to the CPU on its own.
@@ -284,7 +309,7 @@ submitted, press **Submitted ✔**. The **Submissions** page lists every post wi
 - Keep **Transcribe: Smart** – on long VODs it only transcribes around likely moments.
 - Renders run in parallel (half your CPU cores), so the page never freezes.
 
-## 14. Troubleshooting
+## 15. Troubleshooting
 
 | Message | Fix |
 |---|---|
@@ -299,7 +324,7 @@ submitted, press **Submitted ✔**. The **Submissions** page lists every post wi
 | Captions look like a different font | The font in Settings must be installed on your computer (Arial is safe). |
 | YouTube: *quota reached* | Normal – the rest upload automatically tomorrow. |
 
-## 15. Where your files are
+## 16. Where your files are
 
 Everything lives in a **ClipStudio** folder in your home folder (`C:\Users\<you>\ClipStudio` or
 `~/ClipStudio`): the database, YouTube login, and a `media` folder with jobs, caches and the
@@ -308,7 +333,7 @@ To start completely fresh, close Clip Studio and delete that folder.
 
 ---
 
-## 16. For developers
+## 17. For developers
 
 ```
 clipstudio/
@@ -323,6 +348,8 @@ clipstudio/
   render.py       layouts, ASS captions, thumbnails/GIF
   publish.py      YouTube OAuth/upload/scheduler + export
   campaigns.py    campaign rule checker
+  accounts.py     multi-account posting: assignments, safeguards, pipeline, calendar, analytics
+  accounts_routes.py  its pages + API
   db.py           SQLite (plain sqlite3)
   templates/ static/   server-rendered HTML, vanilla JS, one CSS file — no build step
 tests/

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Analytics · Clip Studio{% endblock %}
+{% block content %}
+<h1>Analytics</h1>
+<p class="muted small">Log views and earnings for each posted clip below (or on the Pipeline). Numbers are entered by you — Clip Studio doesn't read them from the platforms.</p>
+<div class="tiles">
+  <div class="tile"><div class="muted small">Total views</div><b>{{ '{:,}'.format(data.totals.views) }}</b></div>
+  <div class="tile"><div class="muted small">Total earnings</div><b>${{ '%.2f'|format(data.totals.earnings) }}</b></div>
+  <div class="tile"><div class="muted small">Posts</div><b>{{ data.totals.posts }}</b></div>
+</div>
+
+<div class="plat-grid">
+{% for pk, p in data.platforms.items() %}
+  <div class="card">
+    <h2 style="margin-top:0">{{ p.label }}</h2>
+    <p class="muted small">{{ p.posts }} posts · {{ '{:,}'.format(p.views) }} views · ${{ '%.2f'|format(p.earnings) }} · RPM ${{ '%.2f'|format(p.rpm) }}</p>
+    {% if p.posts %}
+    <h3>Top streamers</h3>
+    <table class="mini-table"><tr><th>Streamer</th><th>Posts</th><th>Views</th><th>$</th></tr>
+      {% for s in p.streamers %}<tr><td>{{ s.name }}</td><td>{{ s.posts }}</td><td>{{ '{:,}'.format(s.views) }}</td><td>{{ '%.2f'|format(s.earnings) }}</td></tr>{% endfor %}</table>
+    <h3>Top topics (account niches)</h3>
+    <table class="mini-table"><tr><th>Topic</th><th>Posts</th><th>Views</th><th>$</th></tr>
+      {% for s in p.topics %}<tr><td>{{ s.name }}</td><td>{{ s.posts }}</td><td>{{ '{:,}'.format(s.views) }}</td><td>{{ '%.2f'|format(s.earnings) }}</td></tr>{% endfor %}</table>
+    {% else %}<p class="muted small">Nothing posted here yet.</p>{% endif %}
+  </div>
+{% endfor %}
+</div>
+
+{% if data.top_clips %}
+<h2>Top clips</h2>
+<div class="card table-wrap"><table class="mini-table">
+  <tr><th>Clip</th><th>Streamer</th><th>Accounts</th><th>Views</th><th>$</th></tr>
+  {% for c in data.top_clips %}<tr><td><a href="/review?clip={{ c.clip_id }}">{{ (c.title or 'clip')[:50] }}</a></td><td>{{ c.streamer or '' }}</td>
+    <td>{% for a in c.accounts %}<span class="acct-badge tiny" style="--c:{{ a.color }}">{{ a.handle }}</span> {% endfor %}</td>
+    <td>{{ '{:,}'.format(c.views) }}</td><td>{{ '%.2f'|format(c.earnings) }}</td></tr>{% endfor %}
+</table></div>
+{% endif %}
+
+<h2>Log views &amp; earnings</h2>
+<div id="log-list" class="log-list"></div>
+{% if not data.posted %}<p class="muted">Posted clips show up here. Mark clips as posted on the <a href="/pipeline">Pipeline</a>.</p>{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="/static/posting.js"></script>
+<script>
+(function () {
+  const posted = {{ data_json|safe }}.posted;
+  const box = document.getElementById("log-list");
+  box.innerHTML = posted.map(CS.assignmentCard).join("");
+  CS.bindCards(box, () => location.reload());
+})();
+</script>
+{% endblock %}
