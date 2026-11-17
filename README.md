@@ -24,7 +24,7 @@ Clip Studio never logs in to your social accounts and never posts for you — yo
 7. [Review clips](#7-review-clips)
 8. [AI titles and filtering (optional)](#8-ai-titles-and-filtering-optional)
 9. [Campaigns (Whop / Content Rewards)](#9-campaigns-whop--content-rewards)
-10. [Export for TikTok, Reels and X](#10-export-for-tiktok-reels-and-x)
+10. [Share to TikTok, Instagram and YouTube](#10-share-to-tiktok-instagram-and-youtube)
 11. [Posting to several accounts](#11-posting-to-several-accounts)
 12. [Settings explained](#12-settings-explained)
 13. [Speed tips](#13-speed-tips)
@@ -229,11 +229,28 @@ After you post a clip, press **Mark posted…**, pick the platform and paste the
 countdown starts – *"Submit within 30:00"* – with a button to the submission page. When you've
 submitted, press **Submitted ✔**. The **Submissions** page lists every post with its countdown.
 
-## 10. Export for TikTok, Reels and X
+## 10. Share to TikTok, Instagram and YouTube
 
-- Each clip card has **⬇ MP4** and **⬇ Caption** (a .txt with the disclosure, title, description
-  and hashtags ready to paste).
-- **⬇ Export all approved (.zip)** on the Review page downloads every approved clip with its caption file.
+Every finished clip has a **📤 Share** button (Review cards, and the Pipeline/Analytics cards).
+It opens a small window with a preview, an editable **caption** and **hashtags**, and four buttons:
+
+- **TikTok / Instagram / YouTube**: one click **downloads the video** (`clip-studio-<title>.mp4`),
+  **copies your caption**, and **opens that site's upload page** in a new tab. Drag the downloaded file
+  into the upload page and paste the caption (Ctrl+V / Cmd+V).
+  - TikTok opens TikTok Studio's upload page, YouTube opens YouTube Studio's upload screen.
+  - Instagram has no direct upload page: click **+ Create** in the left menu, then **Post**.
+- **Download**: just the video file.
+
+The platforms don't accept a pre-filled caption from other sites, which is why it's copied for you
+to paste. Clip Studio never logs in to your accounts and never posts for you.
+If your browser blocks the new tab, the window shows a link to the upload page instead.
+
+Videos are MP4 (H.264 + AAC), 1080×1920 — the format all three platforms want. The window shows a
+gentle note if a clip is longer than the platform likes (YouTube Shorts: up to 3 minutes; Instagram:
+Reels over 3 minutes aren't recommended to new audiences; TikTok web uploads: up to 30 minutes, under 10 GB).
+
+**Other exports:** each clip card also has **⬇ MP4** and **⬇ Caption** (a .txt to paste), and
+**⬇ Export all approved (.zip)** on the Review page downloads every approved clip with its caption file.
 
 ## 11. Posting to several accounts
 
@@ -317,6 +334,7 @@ clipstudio/
   ai.py           Claude review (structured JSON output) + title regeneration
   render.py       layouts, ASS captions, thumbnails/GIF
   export.py       mp4 + caption export, zip of approved clips
+  static/share-core.js, share.js   the Share window (download + copy caption + open upload page)
   campaigns.py    campaign rule checker
   accounts.py     multi-account posting: assignments, safeguards, pipeline, calendar, analytics
   accounts_routes.py  its pages + API
@@ -328,7 +346,9 @@ run.sh            macOS / Linux launcher
 requirements.txt
 ```
 
-Run the tests (needs ffmpeg): `pip install pytest && python -m pytest tests`.
+Run the tests (needs ffmpeg): `pip install pytest && python -m pytest tests`. The Share logic's JavaScript
+tests (`tests/share.test.mjs`) run inside that too when Node.js is installed, or directly with
+`node --test tests/share.test.mjs`.
 The synthetic end-to-end tests generate a 6-minute `testsrc2` video with loud spikes, a fake chat
 file and a fake transcript, and check the scorer finds the planted moments (±5 s) and renders
 1080×1920 clips with audio, both for VODs and for live watch mode.
