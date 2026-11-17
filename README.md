@@ -239,8 +239,8 @@ submitted, press **Submitted ✔**. The **Submissions** page lists every post wi
 
 If you run more than one channel (e.g. a Kai Cenat GTA 6 page on TikTok and a Lacy page on YouTube Shorts):
 
-1. **Accounts** → *Add account*: platform (YouTube Shorts / TikTok / Instagram Reels), handle, niche (e.g. “Kai Cenat GTA 6”),
-   follower count and the max posts per day (default 3). Each account gets a color badge.
+1. **Board** → **+ Add account**: platform (YouTube Shorts / TikTok / Instagram Reels), handle, niche (e.g. “Kai Cenat GTA 6”),
+   follower count and the max posts per day (default 3). Each account gets a color badge; edit it later with ✎ on its column.
 2. **Board**: every account is a column, grouped by platform. **Drag** an approved clip onto an account
    (on a phone: **tap the clip, then tap the account**). You're warned when a clip doesn't fit the account's niche.
 3. **Pipeline**: each clip-on-account moves **Raw → Edited → Scheduled → Posted**. Filter by platform, account or streamer.

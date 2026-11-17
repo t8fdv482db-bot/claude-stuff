@@ -36,7 +36,7 @@
       return `<section class="plat-section"><h2>${CS.PICONS[p]} ${label}</h2><div class="cols">${accs.map((a) => {
         const items = byAcc[a.id] || [];
         return `<div class="col drop" data-acc="${a.id}" style="--c:${CS.esc(a.color)}">
-          <div class="col-head">${CS.acctBadge(a)}
+          <div class="col-head"><div class="row" style="justify-content:space-between">${CS.acctBadge(a)}<button class="small ghost" data-edit="${a.id}" title="Edit account">✎</button></div>
             <div class="muted small">${CS.esc(a.niche || "no niche set")} · ${CS.fmtNum(a.followers)} followers · ${items.length} clips</div></div>
           <div class="col-body">${items.map(mini).join("") || `<div class="drop-hint">Drop clips here</div>`}</div></div>`;
       }).join("")}</div></section>`;
@@ -91,6 +91,8 @@
     if (selected) $("board").scrollIntoView({ behavior: "smooth", block: "start" });
   });
   $("board").addEventListener("click", async (e) => {
+    const ed = e.target.closest("[data-edit]");
+    if (ed) { e.stopPropagation(); openAccount(data.accounts.find((a) => a.id === Number(ed.dataset.edit))); return; }
     const x = e.target.closest("[data-unassign]");
     if (x) {
       e.stopPropagation();
@@ -103,6 +105,38 @@
     if (m) location.href = `/pipeline?highlight=${m.dataset.id}`;
   });
   $("sel-cancel").onclick = () => { selected = null; render(); };
+
+  // ---- add / edit / remove accounts (this replaced the old Accounts tab)
+  const dlg = $("acc-dlg");
+  let editing = null;
+  function openAccount(acc) {
+    editing = acc || null;
+    $("acc-title").textContent = acc ? `Edit ${acc.handle}` : "Add account";
+    dlg.querySelectorAll("[data-k]").forEach((i) => {
+      if (acc) i.value = acc[i.dataset.k] ?? "";
+      else if (i.dataset.k !== "daily_limit" && i.dataset.k !== "platform") i.value = i.type === "color" ? "#7c5cff" : "";
+    });
+    dlg.querySelector('[data-k="platform"]').disabled = !!acc;
+    $("acc-remove").classList.toggle("hidden", !acc);
+    dlg.showModal();
+  }
+  $("add-acc").onclick = () => openAccount(null);
+  $("acc-cancel").onclick = () => dlg.close();
+  $("acc-save").onclick = async () => {
+    const body = {};
+    dlg.querySelectorAll("[data-k]").forEach((i) => (body[i.dataset.k] = i.value));
+    if (!editing) delete body.color;               // new accounts get the next palette color
+    try {
+      if (editing) { delete body.platform; await CS.api("PUT", `/api/accounts/${editing.id}`, body); }
+      else await CS.api("POST", "/api/accounts", body);
+      dlg.close(); CS.toast("Account saved", "ok", 2000); load();
+    } catch (err) { CS.toast(err.message, "error"); }
+  };
+  $("acc-remove").onclick = async () => {
+    if (!confirm(`Remove ${editing.handle}? Accounts with posted clips are hidden instead, so your analytics stay.`)) return;
+    try { const r = await CS.api("DELETE", `/api/accounts/${editing.id}`); dlg.close(); CS.toast(r.archived ? "Account hidden (stats kept)" : "Account removed", "ok"); load(); }
+    catch (err) { CS.toast(err.message, "error"); }
+  };
 
   document.querySelectorAll("#pool-tabs button").forEach((b) => b.addEventListener("click", () => {
     pool = b.dataset.pool;

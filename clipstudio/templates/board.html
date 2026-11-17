@@ -4,7 +4,7 @@
 {% block content %}
 <div class="row">
   <h1 style="margin:0">Assignment board</h1><span class="spacer"></span>
-  <a class="btn small" href="/accounts">Manage accounts</a>
+  <button class="primary small" id="add-acc">+ Add account</button>
 </div>
 <p class="muted small">Drag a clip onto an account to assign it — or on a phone, <b>tap a clip, then tap an account</b>.
 One clip can go to one account per platform (posting the same clip twice on a platform gets both accounts flagged).</p>
@@ -21,7 +21,24 @@ One clip can go to one account per platform (posting the same clip twice on a pl
 </section>
 
 <div id="board"></div>
-<p id="no-accounts" class="muted hidden">No accounts yet. <a href="/accounts">Add your accounts</a> to start assigning clips.</p>
+<p id="no-accounts" class="muted hidden">No accounts yet. Press <b>+ Add account</b> to add the YouTube Shorts, TikTok and Instagram Reels accounts you post to.</p>
+
+<dialog id="acc-dlg" class="card">
+  <h3 id="acc-title">Add account</h3>
+  <p class="muted small">Just for organizing — Clip Studio never logs in to or posts on your accounts.</p>
+  <div class="form-grid tight">
+    <label>Platform <select data-k="platform">{% for k, v in platforms.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></label>
+    <label>Handle <input data-k="handle" placeholder="@kaiclips" autocapitalize="off"></label>
+    <label>Niche <input data-k="niche" placeholder="Kai Cenat GTA 6"></label>
+    <label>Followers <input data-k="followers" type="text" inputmode="numeric" placeholder="12,500"></label>
+    <label>Max posts per day <input data-k="daily_limit" type="number" min="1" max="50" value="{{ default_limit }}"></label>
+    <label>Badge color <input data-k="color" type="color" value="#7c5cff"></label>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button class="primary" id="acc-save">Save</button><button id="acc-cancel">Cancel</button>
+    <span class="spacer"></span><button class="danger hidden" id="acc-remove">Remove account</button>
+  </div>
+</dialog>
 {% endblock %}
 {% block scripts %}
 <script src="/static/posting.js"></script>

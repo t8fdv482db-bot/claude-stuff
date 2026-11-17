@@ -37,19 +37,9 @@ def _common() -> dict:
 
 
 # ---------------------------------------------------------------- pages
-@router.get("/accounts", response_class=HTMLResponse)
-def accounts_page(request: Request):
-    rows = acc.list_accounts(include_archived=True)
-    counts = {r["account_id"]: r for r in db.q(
-        """SELECT account_id, COUNT(*) n, SUM(status='posted') posted, SUM(views) views, SUM(earnings) earnings
-           FROM assignments GROUP BY account_id""")}
-    return _page(request, "accounts.html", accounts=rows, counts=counts, accounts_json=json.dumps(rows),
-                 default_limit=int(db.setting("default_daily_limit") or 3), **_common())
-
-
 @router.get("/board", response_class=HTMLResponse)
 def board_page(request: Request):
-    return _page(request, "board.html", **_common())
+    return _page(request, "board.html", default_limit=int(db.setting("default_daily_limit") or 3), **_common())
 
 
 @router.get("/pipeline", response_class=HTMLResponse)

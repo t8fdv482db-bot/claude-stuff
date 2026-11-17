@@ -15,7 +15,7 @@ def client(home, monkeypatch):
 
 def test_pages_render(client):
     for path in ("/", "/review", "/streamers", "/streamers/1", "/campaigns", "/submissions", "/settings",
-                 "/accounts", "/board", "/pipeline", "/calendar", "/calendar?week=1", "/analytics"):
+                 "/board", "/pipeline", "/calendar", "/calendar?week=1", "/analytics"):
         r = client.get(path)
         assert r.status_code == 200, path
 
