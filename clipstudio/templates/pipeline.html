@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Pipeline · Clip Studio{% endblock %}
+{% block mainclass %}wide{% endblock %}
+{% block content %}
+<h1>Pipeline</h1>
+<p class="muted small"><b>Raw</b> → tick the originality checklist → <b>Edited</b> (ready) → pick a time → <b>Scheduled</b> → <b>Posted</b> (log views &amp; earnings).
+Assign clips to accounts on the <a href="/board">Board</a>.</p>
+<div class="toolbar">
+  <select id="f-platform"><option value="">All platforms</option>{% for k, v in platforms.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+  <select id="f-account"><option value="">All accounts</option>{% for a in accounts %}<option value="{{ a.id }}">{{ a.handle }} ({{ platforms[a.platform] }})</option>{% endfor %}</select>
+  <select id="f-streamer"><option value="">All streamers</option>{% for s in streamers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select>
+  <div class="tabs mobile-only" id="status-tabs">{% for k, v in statuses.items() %}<button data-s="{{ k }}" class="{{ 'on' if loop.first }}">{{ v }}</button>{% endfor %}</div>
+</div>
+<div class="pipe" id="pipe">
+  {% for k, v in statuses.items() %}
+  <section class="pipe-col {{ 'show' if loop.first }}" data-status="{{ k }}">
+    <h2>{{ v }} <span class="muted" data-count="{{ k }}"></span></h2>
+    <div class="pipe-body"></div>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/posting.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  if (params.get("account")) $("f-account").value = params.get("account");
+  if (params.get("platform")) $("f-platform").value = params.get("platform");
+  if (params.get("streamer")) $("f-streamer").value = params.get("streamer");
+  const highlight = Number(params.get("highlight") || 0);
+
+  async function load() {
+    const q = new URLSearchParams();
+    if ($("f-platform").value) q.set("platform", $("f-platform").value);
+    if ($("f-account").value) q.set("account_id", $("f-account").value);
+    if ($("f-streamer").value) q.set("streamer_id", $("f-streamer").value);
+    const d = await CS.api("GET", "/api/assignments?" + q);
+    Object.keys(CS.STATUSES).forEach((s) => {
+      const items = d.assignments.filter((a) => a.status === s);
+      document.querySelector(`[data-count="${s}"]`).textContent = items.length || "";
+      document.querySelector(`.pipe-col[data-status="${s}"] .pipe-body`).innerHTML =
+        items.map(CS.assignmentCard).join("") || `<p class="muted small">Nothing here.</p>`;
+    });
+    if (highlight) {
+      const el = document.querySelector(`.pcard[data-id="${highlight}"]`);
+      if (el) { el.classList.add("hl"); showCol(el.closest(".pipe-col").dataset.status); el.scrollIntoView({ block: "center" }); }
+    }
+  }
+  function showCol(s) {
+    document.querySelectorAll(".pipe-col").forEach((c) => c.classList.toggle("show", c.dataset.status === s));
+    document.querySelectorAll("#status-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.s === s));
+  }
+  document.querySelectorAll("#status-tabs button").forEach((b) => b.addEventListener("click", () => showCol(b.dataset.s)));
+  ["f-platform", "f-account", "f-streamer"].forEach((id) => $(id).addEventListener("change", load));
+  CS.bindCards($("pipe"), load);
+  load();
+})();
+</script>
+{% endblock %}

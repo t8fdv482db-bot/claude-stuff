@@ -820,3 +820,9 @@ async def storage_usage():
         return sum(p.stat().st_size for p in db.storage_dir().rglob("*") if p.is_file())
     used = await asyncio.to_thread(size)
     return {"used_gb": round(used / 1024 ** 3, 2), "limit_gb": db.setting("max_disk_gb"), "path": str(db.storage_dir())}
+
+
+# ---------------------------------------------------------------- multi-account posting
+from .accounts_routes import router as _accounts_router  # noqa: E402
+
+app.include_router(_accounts_router)

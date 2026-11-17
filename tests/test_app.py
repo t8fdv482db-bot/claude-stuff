@@ -14,7 +14,8 @@ def client(home, monkeypatch):
 
 
 def test_pages_render(client):
-    for path in ("/", "/review", "/streamers", "/streamers/1", "/campaigns", "/submissions", "/schedule", "/settings"):
+    for path in ("/", "/review", "/streamers", "/streamers/1", "/campaigns", "/submissions", "/schedule", "/settings",
+                 "/accounts", "/board", "/pipeline", "/calendar", "/calendar?week=1", "/analytics"):
         r = client.get(path)
         assert r.status_code == 200, path
 
@@ -61,3 +62,18 @@ def test_find_ignores_marker_files(tmp_path):
     for n in ("audio.done", "audio.m4a.part", "audio.info.json", "audio.m4a"):
         (tmp_path / n).write_text("x")
     assert _find(tmp_path, "audio").name == "audio.m4a"
+
+
+def test_account_api_flow(client):
+    r = client.post("/api/accounts", json={"platform": "tiktok", "handle": "kai.tt", "niche": "Kai Cenat"})
+    assert r.status_code == 200 and r.json()["handle"] == "@kai.tt"
+    assert client.post("/api/accounts", json={"platform": "tiktok", "handle": "@KAI.TT"}).status_code == 409
+    from clipstudio import db
+    cid = db.insert("clips", job_id=1, start=0, end=70, status="approved", render_state="ready", title="t")
+    r = client.post("/api/assignments", json={"clip_id": cid, "account_id": 1})
+    aid = r.json()["assignment"]["id"]
+    r = client.post(f"/api/assignments/{aid}/status", json={"status": "edited"})
+    assert r.status_code == 409 and "checklist" in r.json()["error"]
+    client.put(f"/api/clips/{cid}/checklist", json={"captions": True, "commentary": True, "credit": True})
+    assert client.post(f"/api/assignments/{aid}/status", json={"status": "edited"}).status_code == 200
+    assert client.get("/api/board").json()["pool"][0]["platforms"] == ["tiktok"]

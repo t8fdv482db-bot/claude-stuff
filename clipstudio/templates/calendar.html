@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Calendar · Clip Studio{% endblock %}
+{% block mainclass %}wide{% endblock %}
+{% block content %}
+<div class="row">
+  <h1 style="margin:0">Posting calendar</h1><span class="spacer"></span>
+  <select id="f-account" onchange="location.href='/calendar?week={{ cal.offset }}'+(this.value?'&account='+this.value:'')">
+    <option value="">All accounts</option>
+    {% for a in all_accounts %}<option value="{{ a.id }}" {{ 'selected' if account_filter == a.id }}>{{ a.handle }} ({{ platforms[a.platform] }})</option>{% endfor %}
+  </select>
+  <a class="btn small" href="/calendar?week={{ cal.offset - 1 }}{{ '&account=%d'|format(account_filter) if account_filter }}">←</a>
+  <a class="btn small" href="/calendar{{ '?account=%d'|format(account_filter) if account_filter }}">This week</a>
+  <a class="btn small" href="/calendar?week={{ cal.offset + 1 }}{{ '&account=%d'|format(account_filter) if account_filter }}">→</a>
+</div>
+<p class="muted small">Scheduled and posted clips per account per day ({{ cal.tz }}). A red day means an account goes over its daily post limit.
+Schedule clips on the <a href="/pipeline?">Pipeline</a>.</p>
+<div class="legend">{% for a in cal.accounts %}<span class="acct-badge" style="--c:{{ a.color }}">{{ a.handle }} <span class="muted">≤{{ a.daily_limit }}/day</span></span>{% endfor %}</div>
+<div class="cal">
+  {% for d in cal.days %}
+  <div class="day {{ 'today' if d.today }} {{ 'over' if d.over }}">
+    <h4>{{ d.label }}{% if d['items'] %} <span class="muted">· {{ d['items']|length }}</span>{% endif %}</h4>
+    {% if d.over %}<div class="over-note">⚠ Over limit: {{ d.over|join(', ') }}</div>{% endif %}
+    {% for it in d['items'] %}
+      <a class="ev {{ 'uploaded' if it.status == 'posted' }}" href="/pipeline?highlight={{ it.id }}" style="display:block;color:inherit;border-left:3px solid {{ it.account.color }}">
+        <b>{{ it.time }}</b> <span class="acct-badge tiny" style="--c:{{ it.account.color }}">{{ it.account.handle }}</span>
+        <div>{{ (it.clip.title or 'clip')[:60] }}</div>
+        <div class="muted">{{ 'posted ✔' if it.status == 'posted' else 'scheduled' }}{% if it.warnings %} · ⚠ {{ it.warnings|length }}{% endif %}</div>
+      </a>
+    {% endfor %}
+    {% if not d['items'] %}<div class="ev free">nothing</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

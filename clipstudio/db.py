@@ -111,6 +111,33 @@ CREATE TABLE IF NOT EXISTS posts (
   clip_id INTEGER, platform TEXT, url TEXT,
   posted_at REAL, submitted INTEGER DEFAULT 0, submitted_at REAL
 );
+CREATE TABLE IF NOT EXISTS accounts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  platform TEXT NOT NULL,           -- youtube | tiktok | instagram
+  handle TEXT NOT NULL,
+  niche TEXT DEFAULT '',
+  followers INTEGER DEFAULT 0,
+  color TEXT DEFAULT '#7c5cff',
+  daily_limit INTEGER DEFAULT 3,
+  archived INTEGER DEFAULT 0,
+  created REAL
+);
+CREATE TABLE IF NOT EXISTS assignments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  clip_id INTEGER NOT NULL,
+  account_id INTEGER NOT NULL,
+  status TEXT DEFAULT 'raw',        -- raw | edited | scheduled | posted
+  scheduled_at TEXT,                -- local "YYYY-MM-DD HH:MM" in the Settings timezone
+  posted_at REAL,
+  post_url TEXT,
+  views INTEGER DEFAULT 0,
+  earnings REAL DEFAULT 0,
+  created REAL,
+  updated REAL,
+  UNIQUE(clip_id, account_id)
+);
+CREATE INDEX IF NOT EXISTS assignments_account ON assignments(account_id);
+CREATE INDEX IF NOT EXISTS assignments_clip ON assignments(clip_id);
 CREATE INDEX IF NOT EXISTS clips_job ON clips(job_id);
 CREATE INDEX IF NOT EXISTS clips_status ON clips(status);
 """
@@ -132,6 +159,7 @@ def conn() -> sqlite3.Connection:
 
 MIGRATIONS = [  # (table, column, type) added after the first release
     ("clips", "source_url", "TEXT"), ("clips", "source_extra", "TEXT DEFAULT '{}'"),
+    ("clips", "originality", "TEXT DEFAULT '{}'"),   # originality checklist (multi-account posting)
 ]
 
 
@@ -218,6 +246,10 @@ DEFAULTS: dict[str, Any] = {
     "live_keep_minutes": 120,
     "max_parallel_jobs": 2,
     "yt_cookies_browser": "",
+    "default_daily_limit": 3,
+    "max_len_youtube": 180.0,
+    "max_len_tiktok": 600.0,
+    "max_len_instagram": 180.0,
 }
 
 SECRET_KEYS = {"anthropic_api_key"}
