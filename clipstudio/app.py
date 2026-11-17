@@ -655,7 +655,7 @@ def submissions_page(request: Request):
 @app.get("/api/clips/{clip_id}/download")
 def download_clip(clip_id: int):
     from fastapi.responses import FileResponse
-    from .publish import slug
+    from .export import slug
     c = db.get("clips", clip_id)
     if not c or not c.get("video_path") or not Path(c["video_path"]).exists():
         raise HTTPException(404, "This clip isn't rendered yet.")
@@ -664,7 +664,7 @@ def download_clip(clip_id: int):
 
 @app.get("/api/clips/{clip_id}/caption.txt")
 def download_caption(clip_id: int):
-    from .publish import caption_text, slug
+    from .export import caption_text, slug
     c = db.get("clips", clip_id)
     if not c:
         raise HTTPException(404, "No such clip")
@@ -676,7 +676,7 @@ def download_caption(clip_id: int):
 async def export_approved():
     from fastapi.responses import FileResponse
     from starlette.background import BackgroundTask
-    from .publish import export_zip
+    from .export import export_zip
     ids = [r["id"] for r in db.q("SELECT id FROM clips WHERE status='approved' AND render_state='ready' ORDER BY id")]
     if not ids:
         raise HTTPException(404, "No approved clips to export yet.")
@@ -686,69 +686,16 @@ async def export_approved():
                         background=BackgroundTask(lambda: path.unlink(missing_ok=True)))
 
 
-@app.get("/api/youtube/status")
-def yt_status():
-    from . import publish
-    return publish.status()
-
-
-@app.post("/api/youtube/client-secret")
-async def yt_secret(request: Request):
-    from . import publish
-    form = await request.form()
-    f = form.get("file")
-    if f is None or not hasattr(f, "read"):
-        raise HTTPException(400, "Choose your client_secret.json file.")
-    try:
-        publish.save_client_secret(await f.read())
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
-    return publish.status()
-
-
-@app.post("/api/youtube/connect")
-def yt_connect():
-    from . import publish
-    try:
-        publish.connect_async()
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
-    return {"ok": True, "message": "A Google sign-in page is opening in your browser…"}
-
-
-@app.post("/api/youtube/disconnect")
-def yt_disconnect():
-    from . import publish
-    publish.disconnect()
-    return publish.status()
-
-
-@app.post("/api/youtube/schedule-approved")
-async def yt_schedule():
-    from . import publish
-    try:
-        return await asyncio.to_thread(publish.schedule_approved)
-    except Exception as e:  # noqa: BLE001
-        raise HTTPException(400, f"Couldn't schedule: {type(e).__name__}: {str(e)[:200]}") from e
-
-
-@app.get("/schedule", response_class=HTMLResponse)
-def schedule_page(request: Request, week: int = 0):
-    from . import publish
-    return page(request, "schedule.html", cal=publish.week(week), yt=publish.status())
-
-
 # ---------------------------------------------------------------- settings
 @app.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request):
     import os
     from zoneinfo import available_timezones
-    from . import publish
     s = db.all_settings()
     s.pop("anthropic_api_key", None)                 # never sent to the browser
     return page(request, "settings.html", s=s, s_json=json.dumps(s),
                 key_set=bool(db.setting("anthropic_api_key")), env_key=bool(os.environ.get("ANTHROPIC_API_KEY")),
-                timezones=sorted(available_timezones()), yt=publish.status(),
+                timezones=sorted(available_timezones()),
                 storage=str(db.storage_dir()), home=str(db.home()))
 
 
@@ -769,10 +716,6 @@ async def save_settings(request: Request):
                 ZoneInfo(str(v))
             except Exception as e:  # noqa: BLE001
                 raise HTTPException(400, f"Unknown timezone: {v}") from e
-        elif k == "yt_slots":
-            from .publish import parse_slots
-            if v and not parse_slots(str(v)):
-                raise HTTPException(400, "Slots should look like 11:00, 15:00, 19:00")
         elif k == "storage_dir" and v:
             p = Path(str(v)).expanduser()
             try:

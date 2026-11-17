@@ -100,7 +100,6 @@ CREATE TABLE IF NOT EXISTS clips (
   src_path TEXT, src_offset REAL DEFAULT 0, src_end REAL,
   video_path TEXT, thumb_path TEXT, gif_path TEXT,
   disclosure_burned INTEGER DEFAULT 0,
-  youtube_id TEXT, publish_at TEXT, yt_state TEXT, yt_error TEXT, yt_retry_after REAL,
   posted_url TEXT, posted_at REAL, submitted INTEGER DEFAULT 0,
   signals TEXT DEFAULT '{}',
   source_url TEXT, source_extra TEXT DEFAULT '{}',
@@ -163,11 +162,28 @@ MIGRATIONS = [  # (table, column, type) added after the first release
 ]
 
 
+# Removed features: the old YouTube login/auto-upload stored these. Clip Studio no longer
+# connects to any social account, so they're dropped (and the saved Google login deleted).
+DROPPED_COLUMNS = [("clips", c) for c in ("youtube_id", "publish_at", "yt_state", "yt_error", "yt_retry_after")]
+DROPPED_SETTINGS = ["yt_slots"]
+
+
 def _migrate(c: sqlite3.Connection) -> None:
     for table, col, typ in MIGRATIONS:
         cols = {r[1] for r in c.execute(f"PRAGMA table_info({table})")}
         if col not in cols:
             c.execute(f'ALTER TABLE {table} ADD COLUMN "{col}" {typ}')
+    for table, col in DROPPED_COLUMNS:
+        cols = {r[1] for r in c.execute(f"PRAGMA table_info({table})")}
+        if col in cols:
+            try:
+                c.execute(f'ALTER TABLE {table} DROP COLUMN "{col}"')
+            except sqlite3.OperationalError:
+                pass   # very old SQLite without DROP COLUMN: the unused column is harmless
+    for key in DROPPED_SETTINGS:
+        c.execute("DELETE FROM settings WHERE key=?", (key,))
+    import shutil
+    shutil.rmtree(home() / "youtube", ignore_errors=True)   # old Google login token + client secret
 
 
 def _seed(c: sqlite3.Connection) -> None:
@@ -233,7 +249,6 @@ DEFAULTS: dict[str, Any] = {
     "caption_color": "#FFFFFF",
     "caption_highlight": "#FFE600",
     "caption_words": 3,
-    "yt_slots": "11:00, 15:00, 19:00, 22:00",
     "timezone": "America/New_York",
     "discord_webhook": "",
     "storage_dir": "",
