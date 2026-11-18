@@ -286,6 +286,9 @@ def warnings_for(a: dict, clip: dict | None = None, account: dict | None = None)
     if not ok:
         out.append(why)
     out += length_flags(clip, account.get("platform", "youtube"))
+    if clip.get("campaign_id"):
+        from .campaigns import clip_warnings
+        out += [w for w in clip_warnings(clip, platform=account.get("platform")) if "doesn't allow posting" in w]
     if a.get("status") in ("scheduled", "posted"):
         w = limit_warning(account, activity_day(a), exclude_id=a["id"], adding=1)
         if w:

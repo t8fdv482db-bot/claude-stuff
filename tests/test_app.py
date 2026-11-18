@@ -91,3 +91,32 @@ def test_download_name(client, tmp_path):
     assert f'{cid:04d}_Hi_there.mp4' in bad.headers["content-disposition"]       # unsafe names are ignored
     part = client.get(f"/api/clips/{cid}/download", headers={"Range": "bytes=0-99"})
     assert part.status_code == 206 and len(part.content) == 100                     # resumable downloads
+
+
+def test_trim_rules(client, tmp_path, monkeypatch):
+    from clipstudio import db
+    v = tmp_path / "s.mp4"
+    v.write_bytes(b"x")
+    jid = db.insert("jobs", url="https://www.twitch.tv/x", platform="twitch", is_live=1, created=db.now())
+    live = db.insert("clips", job_id=jid, start=100, end=130, render_state="ready", src_path=str(v),
+                     src_offset=90, src_end=140, source_url=None)
+    from clipstudio.worker import manager
+    monkeypatch.setattr(manager, "render", lambda fn: None)          # don't actually render in this test
+    assert client.post(f"/api/clips/{live}/trim", json={"end_delta": -1}).status_code == 200
+    assert db.get("clips", live)["end"] == 129
+    r = client.post(f"/api/clips/{live}/trim", json={"end_delta": 15})
+    assert r.status_code == 400 and "recorded" in r.json()["error"]
+    assert db.get("clips", live)["end"] == 129                       # nothing saved on refusal
+    assert client.post(f"/api/clips/{live}/trim", json={"start_delta": 30}).status_code == 400   # < 5 s
+    _ = manager
+
+
+def test_retry_running_job_refused(client):
+    from clipstudio import db
+    from clipstudio.worker import manager
+    jid = db.insert("jobs", url="https://www.twitch.tv/videos/1", platform="twitch", status="running", created=db.now())
+    manager.contexts[jid] = object()
+    try:
+        assert client.post(f"/api/jobs/{jid}/retry").status_code == 409
+    finally:
+        manager.contexts.pop(jid, None)

@@ -170,3 +170,13 @@ def test_analytics(setup):
     with pytest.raises(acc.RuleError):
         acc.log_stats(1, views="lots")
     _ = json
+
+
+def test_campaign_platform_rule_warns_on_board(setup):
+    acc, db = setup["acc"], setup["db"]
+    camp = db.insert("campaigns", name="Marlon Reach", platforms=json.dumps(["tiktok", "instagram"]))
+    cid = setup["clip"](campaign_id=camp)
+    _, w = acc.assign(cid, setup["yt1"]["id"])
+    assert any("doesn't allow posting on youtube" in x for x in w)
+    _, w = acc.assign(cid, setup["tt"]["id"])
+    assert not any("doesn't allow" in x for x in w)

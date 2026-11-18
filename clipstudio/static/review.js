@@ -83,19 +83,37 @@
     highlight();
     tick();
   }
-  function replaceCard(c) {
+  /* Redraw one card with fresh data. A playing video is stopped when the clip itself changed
+     (trim, re-render): the old video is out of date anyway. While you're typing in the card,
+     the redraw waits until you leave the text box, so nothing you type is lost. */
+  function replaceCard(c, { force = false } = {}) {
     const i = clips.findIndex((x) => x.id === c.id);
     if (i < 0) return;
-    const el = document.querySelector(`.clip[data-id="${c.id}"]`);
-    const playing = el?.querySelector("video") && !el.querySelector("video").paused;
+    const old = clips[i];
     clips[i] = c;
-    const typing = el && el.contains(document.activeElement) && document.activeElement.matches("input, textarea");
-    if (el && !playing && !typing) {
-      el.outerHTML = card(c);
-      highlight();
-      tick();
-    }
+    const el = document.querySelector(`.clip[data-id="${c.id}"]`);
+    if (!el) return;
+    const typing = el.contains(document.activeElement) && document.activeElement.matches("input, textarea");
+    if (typing && !force) { el.dataset.pending = "1"; return; }
+    const video = el.querySelector("video");
+    const changed = force || old.start !== c.start || old.end !== c.end || old.render_state !== c.render_state ||
+      old.video_url !== c.video_url || old.hook !== c.hook || old.status !== c.status;
+    if (video && !video.paused && !changed) return;
+    if (video) video.pause();
+    el.outerHTML = card(c);
+    highlight();
+    tick();
   }
+  // apply updates that waited while you were typing
+  document.addEventListener("focusout", (e) => {
+    const el = e.target.closest && e.target.closest(".clip[data-pending]");
+    if (!el) return;
+    setTimeout(() => {
+      if (el.contains(document.activeElement) && document.activeElement.matches("input, textarea")) return;
+      const c = clips.find((x) => x.id === Number(el.dataset.id));
+      if (c) { delete el.dataset.pending; replaceCard(c); }
+    }, 0);
+  });
   function highlight() {
     document.querySelectorAll(".clip").forEach((el, i) => el.classList.toggle("sel", i === sel));
   }
@@ -122,7 +140,7 @@
         counts();
       } else if (action === "trim") {
         const r = await CS.api("POST", `/api/clips/${id}/trim`, { start_delta: Number(el.dataset.s || 0), end_delta: Number(el.dataset.e || 0) });
-        replaceCard(r);
+        replaceCard(r, { force: true });
       } else if (action === "hook") {
         const hook = document.querySelector(`.clip[data-id="${id}"] [data-field=hook]`).value;
         document.activeElement.blur();

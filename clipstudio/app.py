@@ -164,6 +164,8 @@ def retry_job(job_id: int):
     job = db.get("jobs", job_id)
     if not job:
         raise HTTPException(404, "No such job")
+    if job_id in manager.contexts:
+        raise HTTPException(409, "This job is still running — cancel it first, or wait for it to finish.")
     if job["status"] in ("done", "cancelled"):
         # Re-run = choose clips again with the current settings (downloads/transcripts stay cached).
         # After an error we keep the markers so the job resumes where it stopped.
@@ -324,6 +326,13 @@ async def trim_clip(clip_id: int, request: Request):
         raise HTTPException(400, "A clip can't be shorter than 5 seconds.")
     if end - start > 180:
         raise HTTPException(400, "A clip can't be longer than 3 minutes.")
+    if not c.get("source_url") and c.get("src_path"):
+        # live clips: only the footage recorded around the moment is kept
+        lo, hi = float(c.get("src_offset") or 0), float(c.get("src_end") or end)
+        if start < lo - 0.05 or end > hi + 0.05:
+            raise HTTPException(400, f"Can't extend this live clip further — only {hi - lo:.0f}s of footage was "
+                                     f"recorded around it ({max(0, float(c['start']) - lo):.0f}s before, "
+                                     f"{max(0, hi - float(c['end'])):.0f}s after).")
     db.update("clips", clip_id, start=round(start, 2), end=round(end, 2))
     _rerender(clip_id)
     return _clip_out(db.get("clips", clip_id))
@@ -671,7 +680,6 @@ def download_clip(clip_id: int, name: str | None = None):
 @app.get("/api/clips/{clip_id}/share-info")
 def share_info(clip_id: int):
     """What the Share window needs: thumbnail, caption, hashtags and the file's real format/size."""
-    import re
     from .export import caption_text
     from .media import probe
     from .pipeline import public_clip
